@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Bible — PirateRuler</title>
+<meta name="description" content="The Bible — King James Version (KJV) — study, read and learn. By PirateRuler.com">
+<link rel="icon" href="https://pirateruler.com/static/pr-logo.png" type="image/png">
+<style>
+:root{--bg:#f6fbff;--card:#fff;--text:#072033;--muted:#62707b;--accent:#4b8cff}
+*{box-sizing:border-box}
+body{font-family:Inter,system-ui,Arial; margin:0; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased}
+.container{max-width:980px;margin:18px auto;padding:18px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#6b7dff);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}
+.nav a{margin-left:12px;color:var(--muted);text-decoration:none;font-weight:700}
+.hero{background:var(--card);padding:20px;border-radius:12px;margin-top:14px;box-shadow:0 8px 30px rgba(3,12,30,0.06)}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px}
+.card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 20px rgba(3,12,30,0.05)}
+footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.nav{display:none}}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">PR</div>
+      <div>
+        <div style="font-weight:900">The Bible</div>
+        <div style="font-size:12px;color:var(--muted)">By PirateRuler.com</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="book.html">Read the Bible</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>The Holy Bible (King James Version)</h1>
+    <p style="color:var(--muted)">Welcome. This site provides a clean, fast, and mobile-first reading experience for the King James Version (KJV) — public domain. Use the "Read the Bible" page to open the full text (hosted by Project Gutenberg) or read summaries and guides below.</p>
+  </section>
+
+  <div class="grid">
+    <main>
+      <div class="card">
+        <h2>About this site</h2>
+        <p style="color:var(--muted)">This is a small, static educational site created by PirateRuler. It is intended for reading and studying the KJV text (public domain) and for providing short guides: book summaries, cross-references and key verses. The full KJV is linked on the next page.</p>
+        <p><a href="book.html" style="font-weight:800;color:var(--accent)">Open the Bible →</a></p>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h3>Quick links</h3>
+        <ul style="color:var(--muted);margin:8px 0 0 16px">
+          <li><strong>Old Testament</strong> — Genesis to Malachi</li>
+          <li><strong>New Testament</strong> — Matthew to Revelation</li>
+          <li>Study notes and chapter summaries (coming soon)</li>
+        </ul>
+      </div>
+    </main>
+
+    <aside>
+      <div class="card">
+        <h4>Resources</h4>
+        <p style="color:var(--muted);margin:6px 0 0">Official public-domain KJV at Project Gutenberg. <br><a href="https://www.gutenberg.org/ebooks/10" target="_blank">Open KJV on Gutenberg</a></p>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h4>Brand</h4>
+        <p style="color:var(--muted);margin:6px 0 0">PirateRuler.com — <a href="https://www.pirateruler.com/post/about.html" target="_blank">About</a> · <a href="https://www.pirateruler.com/post/privacy.html" target="_blank">Privacy</a></p>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    © <span id="y"></span> The Bible — PirateRuler.com
+  </footer>
+</div>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
