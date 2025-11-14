@@ -1,111 +1,293 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bible Reader — PirateRuler</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bible — PirateRuler.com</title>
+<meta name="description" content="Bible by PirateRuler — offline reader scaffold." />
 <style>
-body{font-family:system-ui, -apple-system, Arial; margin:0; padding:18px; background:linear-gradient(180deg,#f7fbfe,#f3f7fb); color:#071225}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.brand{display:flex;gap:12px;align-items:center}
-.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#6b7dff,#7b4bff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900}
-.controls{display:flex;gap:8px;align-items:center}
-.reader{background:#fff;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,0.06)}
-.bigtext{font-size:22px;line-height:1.6}
-.controls button{padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,#6b7dff,#7b4bff);color:#fff;font-weight:800}
-select{padding:8px;border-radius:8px;border:1px solid #ddd}
+  :root{
+    --bg-light:#f7fbfe; --card:#fff; --text:#071225;
+    --accent-a:#6b7dff; --accent-b:#7b4bff;
+    --muted:#6b7480;
+  }
+  html.light { background:var(--bg-light); color:var(--text) }
+  body{margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding:20px; background:transparent}
+  .wrap{max-width:900px;margin:12px auto}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent-a),var(--accent-b));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}
+  .title{font-weight:900}
+  .controls{display:flex;gap:8px;align-items:center}
+  select, button { padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.08); font-weight:800 }
+  .reader-card{margin-top:18px;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06)}
+  .verses{font-size:18px;line-height:1.65}
+  .verse-num{color:var(--accent-b); font-weight:800; margin-right:6px}
+  .controls-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .muted{color:var(--muted)}
+  .notice{padding:12px;background:#fff3cf;border:1px solid #ffe08a;border-radius:8px;margin-top:12px}
+  @media(max-width:520px){ .verses{font-size:20px} }
 </style>
 </head>
-<body>
-<header>
-  <div class="brand"><div class="logo">PR</div><div><strong>Bible</strong><div style="font-size:13px;color:#6b7480">by PirateRuler.com</div></div></div>
-  <div class="controls">
-    <select id="bookSelect"></select>
-    <select id="chapSelect"></select>
-    <button id="openBtn">Open</button>
-    <button id="bigBtn">Big Text</button>
-    <button id="randBtn">Random Verse</button>
-  </div>
-</header>
+<body class="light">
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">PR</div>
+        <div>
+          <div class="title">The Bible</div>
+          <div class="muted">by PirateRuler.com</div>
+        </div>
+      </div>
 
-<main>
-  <div class="reader" id="readerArea">
-    <div id="verseArea" class="bigtext">Open a book → chapter to view verses here.</div>
+      <div class="controls">
+        <button id="themeBtn" title="Toggle theme">☀️</button>
+      </div>
+    </header>
+
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <label for="bookSelect" class="muted">Book</label>
+      <select id="bookSelect" aria-label="Book selector"></select>
+
+      <label for="chapterSelect" class="muted">Chapter</label>
+      <select id="chapterSelect" aria-label="Chapter selector"></select>
+
+      <button id="openBtn" class="openBtn">Open</button>
+      <button id="randomBtn" class="openBtn">Random Verse</button>
+    </div>
+
+    <div class="reader-card" id="readerCard">
+      <div id="readerHeader" style="font-weight:900;font-size:20px;margin-bottom:8px">Open a book → chapter to view verses here.</div>
+      <div id="content" class="verses muted">No chapter loaded.</div>
+      <div id="missingNotice" style="display:none" class="notice"></div>
+    </div>
   </div>
-</main>
 
 <script>
-const books = [
-  {slug:'genesis', title:'Genesis', chapters:50}
-  // more book items will be filled in when you add files
-];
+  // ---------- book list (66-book Protestant order) ----------
+  const BOOKS = [
+    { name: "Genesis", slug: "genesis", chapters: 50 },
+    { name: "Exodus", slug: "exodus", chapters: 40 },
+    { name: "Leviticus", slug: "leviticus", chapters: 27 },
+    { name: "Numbers", slug: "numbers", chapters: 36 },
+    { name: "Deuteronomy", slug: "deuteronomy", chapters: 34 },
+    { name: "Joshua", slug: "joshua", chapters: 24 },
+    { name: "Judges", slug: "judges", chapters: 21 },
+    { name: "Ruth", slug: "ruth", chapters: 4 },
+    { name: "1 Samuel", slug: "1-samuel", chapters: 31 },
+    { name: "2 Samuel", slug: "2-samuel", chapters: 24 },
+    { name: "1 Kings", slug: "1-kings", chapters: 22 },
+    { name: "2 Kings", slug: "2-kings", chapters: 25 },
+    { name: "1 Chronicles", slug: "1-chronicles", chapters: 29 },
+    { name: "2 Chronicles", slug: "2-chronicles", chapters: 36 },
+    { name: "Ezra", slug: "ezra", chapters: 10 },
+    { name: "Nehemiah", slug: "nehemiah", chapters: 13 },
+    { name: "Esther", slug: "esther", chapters: 10 },
+    { name: "Job", slug: "job", chapters: 42 },
+    { name: "Psalms", slug: "psalms", chapters: 150 },
+    { name: "Proverbs", slug: "proverbs", chapters: 31 },
+    { name: "Ecclesiastes", slug: "ecclesiastes", chapters: 12 },
+    { name: "Song of Solomon", slug: "song-of-solomon", chapters: 8 },
+    { name: "Isaiah", slug: "isaiah", chapters: 66 },
+    { name: "Jeremiah", slug: "jeremiah", chapters: 52 },
+    { name: "Lamentations", slug: "lamentations", chapters: 5 },
+    { name: "Ezekiel", slug: "ezekiel", chapters: 48 },
+    { name: "Daniel", slug: "daniel", chapters: 12 },
+    { name: "Hosea", slug: "hosea", chapters: 14 },
+    { name: "Joel", slug: "joel", chapters: 3 },
+    { name: "Amos", slug: "amos", chapters: 9 },
+    { name: "Obadiah", slug: "obadiah", chapters: 1 },
+    { name: "Jonah", slug: "jonah", chapters: 4 },
+    { name: "Micah", slug: "micah", chapters: 7 },
+    { name: "Nahum", slug: "nahum", chapters: 3 },
+    { name: "Habakkuk", slug: "habakkuk", chapters: 3 },
+    { name: "Zephaniah", slug: "zephaniah", chapters: 3 },
+    { name: "Haggai", slug: "haggai", chapters: 2 },
+    { name: "Zechariah", slug: "zechariah", chapters: 14 },
+    { name: "Malachi", slug: "malachi", chapters: 4 },
+    { name: "Matthew", slug: "matthew", chapters: 28 },
+    { name: "Mark", slug: "mark", chapters: 16 },
+    { name: "Luke", slug: "luke", chapters: 24 },
+    { name: "John", slug: "john", chapters: 21 },
+    { name: "Acts", slug: "acts", chapters: 28 },
+    { name: "Romans", slug: "romans", chapters: 16 },
+    { name: "1 Corinthians", slug: "1-corinthians", chapters: 16 },
+    { name: "2 Corinthians", slug: "2-corinthians", chapters: 13 },
+    { name: "Galatians", slug: "galatians", chapters: 6 },
+    { name: "Ephesians", slug: "ephesians", chapters: 6 },
+    { name: "Philippians", slug: "philippians", chapters: 4 },
+    { name: "Colossians", slug: "colossians", chapters: 4 },
+    { name: "1 Thessalonians", slug: "1-thessalonians", chapters: 5 },
+    { name: "2 Thessalonians", slug: "2-thessalonians", chapters: 3 },
+    { name: "1 Timothy", slug: "1-timothy", chapters: 6 },
+    { name: "2 Timothy", slug: "2-timothy", chapters: 4 },
+    { name: "Titus", slug: "titus", chapters: 3 },
+    { name: "Philemon", slug: "philemon", chapters: 1 },
+    { name: "Hebrews", slug: "hebrews", chapters: 13 },
+    { name: "James", slug: "james", chapters: 5 },
+    { name: "1 Peter", slug: "1-peter", chapters: 5 },
+    { name: "2 Peter", slug: "2-peter", chapters: 3 },
+    { name: "1 John", slug: "1-john", chapters: 5 },
+    { name: "2 John", slug: "2-john", chapters: 1 },
+    { name: "3 John", slug: "3-john", chapters: 1 },
+    { name: "Jude", slug: "jude", chapters: 1 },
+    { name: "Revelation", slug: "revelation", chapters: 22 }
+  ];
 
-const bookSelect = document.getElementById('bookSelect');
-const chapSelect = document.getElementById('chapSelect');
-const openBtn = document.getElementById('openBtn');
-const bigBtn = document.getElementById('bigBtn');
-const randBtn = document.getElementById('randBtn');
-const verseArea = document.getElementById('verseArea');
+  const bookSelect = document.getElementById('bookSelect');
+  const chapterSelect = document.getElementById('chapterSelect');
+  const openBtn = document.getElementById('openBtn');
+  const randomBtn = document.getElementById('randomBtn');
+  const content = document.getElementById('content');
+  const readerHeader = document.getElementById('readerHeader');
+  const missingNotice = document.getElementById('missingNotice');
 
-// populate books (scaffold has only Genesis sample)
-books.forEach(b => {
-  const opt = document.createElement('option');
-  opt.value = b.slug; opt.textContent = b.title;
-  bookSelect.appendChild(opt);
-});
-
-// populate chapters for selected book (default small count to keep UI usable)
-function populateChaps(){
-  chapSelect.innerHTML = '';
-  const chosen = books.find(b=>b.slug===bookSelect.value);
-  const count = chosen ? Math.min(chosen.chapters, 50) : 1;
-  for(let i=1;i<=count;i++){
-    const o = document.createElement('option'); o.value=i; o.textContent='Chapter '+i; chapSelect.appendChild(o);
-  }
-}
-bookSelect.addEventListener('change', populateChaps);
-populateChaps();
-
-openBtn.addEventListener('click', async ()=>{
-  const slug = bookSelect.value;
-  const chap = chapSelect.value;
-  const path = 'books/' + slug + '.html';
-  try {
-    const r = await fetch(path);
-    if(!r.ok) throw new Error('Missing file: '+path);
-    const txt = await r.text();
-    // simple parsing: look for <div class="chapter" data-ch="N"> ... </div>
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(txt, 'text/html');
-    const chapter = doc.querySelector('.chapter[data-ch="'+chap+'"]') || doc.querySelector('.chapter');
-    verseArea.innerHTML = chapter ? chapter.innerHTML : '<em>Chapter not found in file</em>';
-    // make links to verses clickable (optional)
-    verseArea.querySelectorAll('a.verse').forEach(a=>a.addEventListener('click', e=>{e.preventDefault(); alert(a.dataset.text||a.textContent)}));
-  } catch(err){
-    verseArea.innerHTML = '<strong>Error:</strong> '+err.message + '<br/><small>Make sure /books/'+slug+'.html exists.</small>';
-  }
-});
-
-bigBtn.addEventListener('click', ()=>{
-  document.querySelectorAll('.bigtext').forEach(el=> {
-    const size = parseInt(window.getComputedStyle(el).fontSize);
-    el.style.fontSize = (size>28?20:(size+4))+'px';
+  // populate books
+  BOOKS.forEach(b=>{
+    const opt = document.createElement('option');
+    opt.value = b.slug;
+    opt.textContent = b.name;
+    bookSelect.appendChild(opt);
   });
-});
 
-randBtn.addEventListener('click', async ()=>{
-  // load file and pick a random verse element (assumes markup <span class="verse" data-verse="1"> ... </span>)
-  const slug = bookSelect.value;
-  try {
-    const r = await fetch('books/'+slug+'.html');
-    const txt = await r.text();
-    const parser = new DOMParser(); const doc = parser.parseFromString(txt,'text/html');
-    const verses = Array.from(doc.querySelectorAll('.verse'));
-    if(!verses.length){ alert('No verse markup found in that book file.'); return; }
-    const v = verses[Math.floor(Math.random()*verses.length)];
-    verseArea.innerHTML = '<div style="font-weight:900;margin-bottom:8px">'+v.dataset.reference+'</div><div>'+v.innerHTML+'</div>';
-  } catch(e){ alert('Error: '+e.message); }
-});
+  function populateChaptersFor(slug){
+    chapterSelect.innerHTML = '';
+    const book = BOOKS.find(b=>b.slug === slug);
+    if(!book) return;
+    for(let i=1;i<=book.chapters;i++){
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = i;
+      chapterSelect.appendChild(o);
+    }
+  }
+
+  // init
+  populateChaptersFor(BOOKS[0].slug);
+  bookSelect.addEventListener('change', e => populateChaptersFor(e.target.value));
+
+  // helper: fetch local file. NOTE: for local files served from same origin.
+  async function loadChapter(bookSlug, chapterNum){
+    // try chapter-per-file first: books/<slug>/<chapter>.html
+    const chapterPath = `/books/${bookSlug}/${chapterNum}.html`;
+    const bookPath = `/books/${bookSlug}.html`;
+    missingNotice.style.display = 'none';
+    content.classList.add('muted');
+    content.textContent = 'Loading...';
+    readerHeader.textContent = `Loading ${bookSlug} ${chapterNum}...`;
+
+    try {
+      let res = await fetch(chapterPath);
+      if(res.ok){
+        const html = await res.text();
+        renderChapterHtml(html, bookSlug, chapterNum);
+        return;
+      }
+      // fallback to book-per-file (book contains markup with anchors or chapters)
+      res = await fetch(bookPath);
+      if(res.ok){
+        const html = await res.text();
+        // attempt to extract <chapter id="X">...</chapter> from file (simple parse)
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        // try anchors: <div class="chapter" data-chapter="1"> ...
+        const byId = doc.querySelector(`[data-chapter="${chapterNum}"]`) || doc.getElementById('chapter-' + chapterNum);
+        if(byId){
+          renderChapterHtml(byId.innerHTML, bookSlug, chapterNum);
+          return;
+        } else {
+          // if the book file is plain text, show notice and entire book
+          renderChapterHtml(doc.body.innerHTML, bookSlug, chapterNum, true);
+          return;
+        }
+      }
+      // not found
+      showMissing(bookSlug, chapterNum);
+    } catch (err) {
+      console.error(err);
+      showMissing(bookSlug, chapterNum, err.message);
+    }
+  }
+
+  function renderChapterHtml(html, bookSlug, chapterNum, fallback=false){
+    readerHeader.textContent = `${displayBookName(bookSlug)} — Chapter ${chapterNum}`;
+    content.classList.remove('muted');
+    // sanitize minimal: show as-is (we assume local safe files)
+    content.innerHTML = html;
+    missingNotice.style.display = 'none';
+  }
+
+  function showMissing(bookSlug, chapterNum, extra=''){
+    readerHeader.textContent = `${displayBookName(bookSlug)} — Chapter ${chapterNum}`;
+    content.classList.add('muted');
+    content.innerHTML = `Chapter file not found on the site.<br><br>
+      Expected locations (served from your site):
+      <ul>
+        <li><code>/books/${bookSlug}/${chapterNum}.html</code> (recommended)</li>
+        <li><code>/books/${bookSlug}.html</code> (book file containing chapters)</li>
+      </ul>
+      <div style="margin-top:8px">If you want, I can generate the full KJV files and pack them into a ZIP for you to upload. Reply "GENERATE KJV CHAPTERS" and tell me whether you want chapter-per-file or book-per-file.</div>
+    `;
+    missingNotice.style.display = 'block';
+    missingNotice.innerHTML = (extra ? `<strong>Error:</strong> ${extra}<br><br>` : '') + missingNotice.innerHTML;
+  }
+
+  function displayBookName(slug){
+    const b = BOOKS.find(x=>x.slug === slug);
+    return b ? b.name : slug;
+  }
+
+  openBtn.addEventListener('click', ()=>{
+    const b = bookSelect.value;
+    const c = chapterSelect.value;
+    loadChapter(b, c);
+  });
+
+  randomBtn.addEventListener('click', async ()=>{
+    // choose random book and chapter, then try to load
+    const book = BOOKS[Math.floor(Math.random()*BOOKS.length)];
+    const chapter = Math.floor(Math.random()*book.chapters) + 1;
+    bookSelect.value = book.slug;
+    populateChaptersFor(book.slug);
+    chapterSelect.value = chapter;
+    await loadChapter(book.slug, chapter);
+  });
+
+  // small fallback sample chapter (if you don't have files yet, use this sample)
+  // This allows the UI to show something even if files are missing.
+  (function addSampleFallback(){
+    // If user clicks open and files missing, the notice will show and suggest generation.
+    // But keep a sample so the page isn't empty.
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // show light helper sample only on first load
+      const shown = sessionStorage.getItem('pr-sample-shown');
+      if(!shown){
+        content.classList.remove('muted');
+        readerHeader.textContent = 'Sample — Genesis 1';
+        content.innerHTML = `
+          <p><span class="verse-num">1</span>In the beginning God created the heaven and the earth.</p>
+          <p><span class="verse-num">2</span>And the earth was without form, and void; and darkness was upon the face of the deep...</p>
+          <div class="muted" style="margin-top:10px">This is a short sample. Replace with full files in /books/ to show real chapters.</div>
+        `;
+        sessionStorage.setItem('pr-sample-shown','1');
+      }
+    });
+  })();
+
+  // theme handling
+  const themeBtn = document.getElementById('themeBtn');
+  function setTheme(t){
+    document.documentElement.classList.remove('light','dark');
+    document.documentElement.classList.add(t);
+    localStorage.setItem('pr-theme', t);
+    themeBtn.textContent = t === 'light' ? '☀️' : '🌙';
+  }
+  (function initTheme(){
+    const saved = localStorage.getItem('pr-theme') || 'light';
+    setTheme(saved);
+  })();
+  themeBtn.addEventListener('click', ()=> setTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
+
 </script>
 </body>
 </html>
