@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bible Reader — PirateRuler</title>
+<style>
+body{font-family:system-ui, -apple-system, Arial; margin:0; padding:18px; background:linear-gradient(180deg,#f7fbfe,#f3f7fb); color:#071225}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#6b7dff,#7b4bff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900}
+.controls{display:flex;gap:8px;align-items:center}
+.reader{background:#fff;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,0.06)}
+.bigtext{font-size:22px;line-height:1.6}
+.controls button{padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,#6b7dff,#7b4bff);color:#fff;font-weight:800}
+select{padding:8px;border-radius:8px;border:1px solid #ddd}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">PR</div><div><strong>Bible</strong><div style="font-size:13px;color:#6b7480">by PirateRuler.com</div></div></div>
+  <div class="controls">
+    <select id="bookSelect"></select>
+    <select id="chapSelect"></select>
+    <button id="openBtn">Open</button>
+    <button id="bigBtn">Big Text</button>
+    <button id="randBtn">Random Verse</button>
+  </div>
+</header>
+
+<main>
+  <div class="reader" id="readerArea">
+    <div id="verseArea" class="bigtext">Open a book → chapter to view verses here.</div>
+  </div>
+</main>
+
+<script>
+const books = [
+  {slug:'genesis', title:'Genesis', chapters:50}
+  // more book items will be filled in when you add files
+];
+
+const bookSelect = document.getElementById('bookSelect');
+const chapSelect = document.getElementById('chapSelect');
+const openBtn = document.getElementById('openBtn');
+const bigBtn = document.getElementById('bigBtn');
+const randBtn = document.getElementById('randBtn');
+const verseArea = document.getElementById('verseArea');
+
+// populate books (scaffold has only Genesis sample)
+books.forEach(b => {
+  const opt = document.createElement('option');
+  opt.value = b.slug; opt.textContent = b.title;
+  bookSelect.appendChild(opt);
+});
+
+// populate chapters for selected book (default small count to keep UI usable)
+function populateChaps(){
+  chapSelect.innerHTML = '';
+  const chosen = books.find(b=>b.slug===bookSelect.value);
+  const count = chosen ? Math.min(chosen.chapters, 50) : 1;
+  for(let i=1;i<=count;i++){
+    const o = document.createElement('option'); o.value=i; o.textContent='Chapter '+i; chapSelect.appendChild(o);
+  }
+}
+bookSelect.addEventListener('change', populateChaps);
+populateChaps();
+
+openBtn.addEventListener('click', async ()=>{
+  const slug = bookSelect.value;
+  const chap = chapSelect.value;
+  const path = 'books/' + slug + '.html';
+  try {
+    const r = await fetch(path);
+    if(!r.ok) throw new Error('Missing file: '+path);
+    const txt = await r.text();
+    // simple parsing: look for <div class="chapter" data-ch="N"> ... </div>
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(txt, 'text/html');
+    const chapter = doc.querySelector('.chapter[data-ch="'+chap+'"]') || doc.querySelector('.chapter');
+    verseArea.innerHTML = chapter ? chapter.innerHTML : '<em>Chapter not found in file</em>';
+    // make links to verses clickable (optional)
+    verseArea.querySelectorAll('a.verse').forEach(a=>a.addEventListener('click', e=>{e.preventDefault(); alert(a.dataset.text||a.textContent)}));
+  } catch(err){
+    verseArea.innerHTML = '<strong>Error:</strong> '+err.message + '<br/><small>Make sure /books/'+slug+'.html exists.</small>';
+  }
+});
+
+bigBtn.addEventListener('click', ()=>{
+  document.querySelectorAll('.bigtext').forEach(el=> {
+    const size = parseInt(window.getComputedStyle(el).fontSize);
+    el.style.fontSize = (size>28?20:(size+4))+'px';
+  });
+});
+
+randBtn.addEventListener('click', async ()=>{
+  // load file and pick a random verse element (assumes markup <span class="verse" data-verse="1"> ... </span>)
+  const slug = bookSelect.value;
+  try {
+    const r = await fetch('books/'+slug+'.html');
+    const txt = await r.text();
+    const parser = new DOMParser(); const doc = parser.parseFromString(txt,'text/html');
+    const verses = Array.from(doc.querySelectorAll('.verse'));
+    if(!verses.length){ alert('No verse markup found in that book file.'); return; }
+    const v = verses[Math.floor(Math.random()*verses.length)];
+    verseArea.innerHTML = '<div style="font-weight:900;margin-bottom:8px">'+v.dataset.reference+'</div><div>'+v.innerHTML+'</div>';
+  } catch(e){ alert('Error: '+e.message); }
+});
+</script>
+</body>
+</html>
