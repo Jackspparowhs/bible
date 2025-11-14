@@ -3,290 +3,368 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Bible — PirateRuler.com</title>
-<meta name="description" content="Bible by PirateRuler — offline reader scaffold." />
+<title>The Bible — PirateRuler.com</title>
+<meta name="description" content="The Bible by PirateRuler.com — offline, simple reader using image pages (no API)" />
 <style>
+  /* Minimal theme that matches your site style (dark/light via html.light) */
   :root{
-    --bg-light:#f7fbfe; --card:#fff; --text:#071225;
-    --accent-a:#6b7dff; --accent-b:#7b4bff;
-    --muted:#6b7480;
+    --bg-dark: linear-gradient(180deg,#061028 0%, #071225 50%);
+    --bg-light: linear-gradient(180deg,#f7fbfe,#f3f7fb);
+    --card-dark: rgba(255,255,255,0.02);
+    --muted-dark: #98a7bf;
+    --muted-light: #6b7480;
+    --accent-a: #6b7dff;
+    --accent-b: #7b4bff;
+    --text-light: #e9f1ff;
+    --text-dark: #071225;
+    --max-w: 1100px;
+    --radius: 14px;
   }
-  html.light { background:var(--bg-light); color:var(--text) }
-  body{margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding:20px; background:transparent}
-  .wrap{max-width:900px;margin:12px auto}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .brand{display:flex;align-items:center;gap:12px}
-  .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent-a),var(--accent-b));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}
-  .title{font-weight:900}
-  .controls{display:flex;gap:8px;align-items:center}
-  select, button { padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.08); font-weight:800 }
-  .reader-card{margin-top:18px;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06)}
-  .verses{font-size:18px;line-height:1.65}
-  .verse-num{color:var(--accent-b); font-weight:800; margin-right:6px}
-  .controls-row{display:flex;gap:8px;align-items:center;margin-top:10px}
-  .muted{color:var(--muted)}
-  .notice{padding:12px;background:#fff3cf;border:1px solid #ffe08a;border-radius:8px;margin-top:12px}
-  @media(max-width:520px){ .verses{font-size:20px} }
+  html.light { --bg: var(--bg-light); --muted: var(--muted-light); --text: var(--text-dark); --offbg: #fff; }
+  html         { --bg: var(--bg-dark);  --muted: var(--muted-dark); --text: var(--text-light); --offbg: #061028; }
+
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text); padding:18px; -webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:var(--max-w);margin:0 auto}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent-a),var(--accent-b));color:#fff;font-weight:900}
+  .title{font-weight:900;font-size:18px}
+  .sub{font-size:12px;color:var(--muted)}
+
+  .controls{display:flex;gap:10px;align-items:center}
+  .theme-btn{width:46px;height:46px;border-radius:12px;border:0;background:var(--offbg);cursor:pointer;font-size:18px}
+
+  main{display:block}
+  .intro{background:var(--offbg);padding:18px;border-radius:12px;margin-bottom:18px;box-shadow:0 10px 30px rgba(0,0,0,0.25)}
+  .intro h1{margin:0 0 8px 0;font-size:20px}
+  .intro p{margin:0;color:var(--muted);font-size:14px}
+
+  /* books grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:18px}
+  .book-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:110px;justify-content:center}
+  .book-icon{width:72px;height:72;border-radius:12px;background:linear-gradient(135deg,var(--accent-a),var(--accent-b));display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:16px}
+  .book-name{font-weight:800;text-align:center;font-size:13px}
+  .chap-count{font-size:12px;color:var(--muted)}
+
+  /* modal / viewer */
+  .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;padding:18px;z-index:999}
+  .modal.open{display:flex}
+  .modal-bg{position:absolute;inset:0;backdrop-filter:blur(3px);background:rgba(0,0,0,0.45)}
+  .viewer{position:relative;max-width:980px;width:100%;max-height:92vh;background:var(--offbg);border-radius:12px;padding:14px;overflow:hidden;z-index:10;box-shadow:0 20px 60px rgba(0,0,0,0.6);display:flex;flex-direction:column}
+  .viewer-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+  .viewer-title{font-weight:900}
+  .viewer-controls{display:flex;gap:8px;align-items:center}
+  .btn{padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent-a),var(--accent-b));color:#fff;font-weight:800;cursor:pointer}
+  .btn-ghost{padding:8px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--muted);cursor:pointer}
+
+  .image-wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;background:transparent;border-radius:8px;padding:6px}
+  .page-img{max-width:100%;max-height:78vh;border-radius:6px;box-shadow:0 8px 20px rgba(0,0,0,0.4);background:#fff}
+
+  .thumb-row{display:flex;gap:8px;overflow:auto;padding-top:10px;margin-top:8px}
+  .thumb{width:72px;height:88px;border-radius:6px;flex:0 0 auto;overflow:hidden;border:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+
+  /* helper text */
+  .hint{font-size:13px;color:var(--muted);margin-top:8px}
+
+  @media (max-width:720px){
+    .viewer{padding:10px}
+    .book-name{font-size:12px}
+  }
 </style>
 </head>
-<body class="light">
+<body>
   <div class="wrap">
     <header>
       <div class="brand">
         <div class="logo">PR</div>
         <div>
-          <div class="title">The Bible</div>
-          <div class="muted">by PirateRuler.com</div>
+          <div class="title">Bible</div>
+          <div class="sub">by PirateRuler.com</div>
         </div>
       </div>
 
       <div class="controls">
-        <button id="themeBtn" title="Toggle theme">☀️</button>
+        <button id="themeBtn" class="theme-btn" title="Toggle theme">☀️</button>
       </div>
     </header>
 
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <label for="bookSelect" class="muted">Book</label>
-      <select id="bookSelect" aria-label="Book selector"></select>
+    <main>
+      <section class="intro">
+        <h1>Open a book → chapter to view image pages</h1>
+        <p class="hint">Setup: place your scanned/screenshot pages in folders named <code>books/&lt;slug&gt;/&lt;chapter&gt;.jpg</code>. Example: <code>books/genesis/1.jpg</code>, <code>books/psalms/23.jpg</code>. See full naming rules below.</p>
+      </section>
 
-      <label for="chapterSelect" class="muted">Chapter</label>
-      <select id="chapterSelect" aria-label="Chapter selector"></select>
+      <!-- Books grid generated by JS -->
+      <div id="booksGrid" class="grid" aria-live="polite"></div>
 
-      <button id="openBtn" class="openBtn">Open</button>
-      <button id="randomBtn" class="openBtn">Random Verse</button>
-    </div>
+      <p style="margin-top:18px;color:var(--muted);font-size:13px">
+        Naming & location (very important):
+        <ul>
+          <li>Put folders under <code>/books/</code> on the same site hosting this page.</li>
+          <li>Each book folder uses the <strong>slug</strong> (see list used by this page), then files named <code>1.jpg</code>, <code>2.jpg</code> ... for chapters.</li>
+          <li>Supported image formats: <code>.jpg</code>, <code>.png</code>. Use smallish optimized images (600–1200px wide) for fast mobile load.</li>
+        </ul>
+      </p>
+    </main>
+  </div>
 
-    <div class="reader-card" id="readerCard">
-      <div id="readerHeader" style="font-weight:900;font-size:20px;margin-bottom:8px">Open a book → chapter to view verses here.</div>
-      <div id="content" class="verses muted">No chapter loaded.</div>
-      <div id="missingNotice" style="display:none" class="notice"></div>
+  <!-- modal viewer -->
+  <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-bg" id="modalBg"></div>
+    <div class="viewer" role="document" aria-modal="true">
+      <div class="viewer-header">
+        <div>
+          <div id="viewerTitle" class="viewer-title">—</div>
+          <div id="viewerSubtitle" style="font-size:13px;color:var(--muted)"></div>
+        </div>
+        <div class="viewer-controls">
+          <button id="prevBtn" class="btn-ghost" title="Previous chapter">◀ Prev</button>
+          <button id="nextBtn" class="btn-ghost" title="Next chapter">Next ▶</button>
+          <button id="closeBtn" class="btn" title="Close">Close</button>
+        </div>
+      </div>
+
+      <div class="image-wrap" id="imageWrap">
+        <img id="pageImage" class="page-img" alt="Bible page" src="" />
+      </div>
+
+      <div class="thumb-row" id="thumbRow" aria-hidden="false"></div>
     </div>
   </div>
 
 <script>
-  // ---------- book list (66-book Protestant order) ----------
-  const BOOKS = [
-    { name: "Genesis", slug: "genesis", chapters: 50 },
-    { name: "Exodus", slug: "exodus", chapters: 40 },
-    { name: "Leviticus", slug: "leviticus", chapters: 27 },
-    { name: "Numbers", slug: "numbers", chapters: 36 },
-    { name: "Deuteronomy", slug: "deuteronomy", chapters: 34 },
-    { name: "Joshua", slug: "joshua", chapters: 24 },
-    { name: "Judges", slug: "judges", chapters: 21 },
-    { name: "Ruth", slug: "ruth", chapters: 4 },
-    { name: "1 Samuel", slug: "1-samuel", chapters: 31 },
-    { name: "2 Samuel", slug: "2-samuel", chapters: 24 },
-    { name: "1 Kings", slug: "1-kings", chapters: 22 },
-    { name: "2 Kings", slug: "2-kings", chapters: 25 },
-    { name: "1 Chronicles", slug: "1-chronicles", chapters: 29 },
-    { name: "2 Chronicles", slug: "2-chronicles", chapters: 36 },
-    { name: "Ezra", slug: "ezra", chapters: 10 },
-    { name: "Nehemiah", slug: "nehemiah", chapters: 13 },
-    { name: "Esther", slug: "esther", chapters: 10 },
-    { name: "Job", slug: "job", chapters: 42 },
-    { name: "Psalms", slug: "psalms", chapters: 150 },
-    { name: "Proverbs", slug: "proverbs", chapters: 31 },
-    { name: "Ecclesiastes", slug: "ecclesiastes", chapters: 12 },
-    { name: "Song of Solomon", slug: "song-of-solomon", chapters: 8 },
-    { name: "Isaiah", slug: "isaiah", chapters: 66 },
-    { name: "Jeremiah", slug: "jeremiah", chapters: 52 },
-    { name: "Lamentations", slug: "lamentations", chapters: 5 },
-    { name: "Ezekiel", slug: "ezekiel", chapters: 48 },
-    { name: "Daniel", slug: "daniel", chapters: 12 },
-    { name: "Hosea", slug: "hosea", chapters: 14 },
-    { name: "Joel", slug: "joel", chapters: 3 },
-    { name: "Amos", slug: "amos", chapters: 9 },
-    { name: "Obadiah", slug: "obadiah", chapters: 1 },
-    { name: "Jonah", slug: "jonah", chapters: 4 },
-    { name: "Micah", slug: "micah", chapters: 7 },
-    { name: "Nahum", slug: "nahum", chapters: 3 },
-    { name: "Habakkuk", slug: "habakkuk", chapters: 3 },
-    { name: "Zephaniah", slug: "zephaniah", chapters: 3 },
-    { name: "Haggai", slug: "haggai", chapters: 2 },
-    { name: "Zechariah", slug: "zechariah", chapters: 14 },
-    { name: "Malachi", slug: "malachi", chapters: 4 },
-    { name: "Matthew", slug: "matthew", chapters: 28 },
-    { name: "Mark", slug: "mark", chapters: 16 },
-    { name: "Luke", slug: "luke", chapters: 24 },
-    { name: "John", slug: "john", chapters: 21 },
-    { name: "Acts", slug: "acts", chapters: 28 },
-    { name: "Romans", slug: "romans", chapters: 16 },
-    { name: "1 Corinthians", slug: "1-corinthians", chapters: 16 },
-    { name: "2 Corinthians", slug: "2-corinthians", chapters: 13 },
-    { name: "Galatians", slug: "galatians", chapters: 6 },
-    { name: "Ephesians", slug: "ephesians", chapters: 6 },
-    { name: "Philippians", slug: "philippians", chapters: 4 },
-    { name: "Colossians", slug: "colossians", chapters: 4 },
-    { name: "1 Thessalonians", slug: "1-thessalonians", chapters: 5 },
-    { name: "2 Thessalonians", slug: "2-thessalonians", chapters: 3 },
-    { name: "1 Timothy", slug: "1-timothy", chapters: 6 },
-    { name: "2 Timothy", slug: "2-timothy", chapters: 4 },
-    { name: "Titus", slug: "titus", chapters: 3 },
-    { name: "Philemon", slug: "philemon", chapters: 1 },
-    { name: "Hebrews", slug: "hebrews", chapters: 13 },
-    { name: "James", slug: "james", chapters: 5 },
-    { name: "1 Peter", slug: "1-peter", chapters: 5 },
-    { name: "2 Peter", slug: "2-peter", chapters: 3 },
-    { name: "1 John", slug: "1-john", chapters: 5 },
-    { name: "2 John", slug: "2-john", chapters: 1 },
-    { name: "3 John", slug: "3-john", chapters: 1 },
-    { name: "Jude", slug: "jude", chapters: 1 },
-    { name: "Revelation", slug: "revelation", chapters: 22 }
-  ];
+/* =========================
+   BOOK LIST & CHAPTER COUNTS
+   (Protestant order) - slugs used for folders
+   ========================= */
+const BOOKS = [
+  {slug:'genesis', name:'Genesis', chapters:50},
+  {slug:'exodus', name:'Exodus', chapters:40},
+  {slug:'leviticus', name:'Leviticus', chapters:27},
+  {slug:'numbers', name:'Numbers', chapters:36},
+  {slug:'deuteronomy', name:'Deuteronomy', chapters:34},
+  {slug:'joshua', name:'Joshua', chapters:24},
+  {slug:'judges', name:'Judges', chapters:21},
+  {slug:'ruth', name:'Ruth', chapters:4},
+  {slug:'1-samuel', name:'1 Samuel', chapters:31},
+  {slug:'2-samuel', name:'2 Samuel', chapters:24},
+  {slug:'1-kings', name:'1 Kings', chapters:22},
+  {slug:'2-kings', name:'2 Kings', chapters:25},
+  {slug:'1-chronicles', name:'1 Chronicles', chapters:29},
+  {slug:'2-chronicles', name:'2 Chronicles', chapters:36},
+  {slug:'ezra', name:'Ezra', chapters:10},
+  {slug:'nehemiah', name:'Nehemiah', chapters:13},
+  {slug:'esther', name:'Esther', chapters:10},
+  {slug:'job', name:'Job', chapters:42},
+  {slug:'psalms', name:'Psalms', chapters:150},
+  {slug:'proverbs', name:'Proverbs', chapters:31},
+  {slug:'ecclesiastes', name:'Ecclesiastes', chapters:12},
+  {slug:'song-of-solomon', name:'Song of Solomon', chapters:8},
+  {slug:'isaiah', name:'Isaiah', chapters:66},
+  {slug:'jeremiah', name:'Jeremiah', chapters:52},
+  {slug:'lamentations', name:'Lamentations', chapters:5},
+  {slug:'ezekiel', name:'Ezekiel', chapters:48},
+  {slug:'daniel', name:'Daniel', chapters:12},
+  {slug:'hosea', name:'Hosea', chapters:14},
+  {slug:'joel', name:'Joel', chapters:3},
+  {slug:'amos', name:'Amos', chapters:9},
+  {slug:'obadiah', name:'Obadiah', chapters:1},
+  {slug:'jonah', name:'Jonah', chapters:4},
+  {slug:'micah', name:'Micah', chapters:7},
+  {slug:'nahum', name:'Nahum', chapters:3},
+  {slug:'habakkuk', name:'Habakkuk', chapters:3},
+  {slug:'zephaniah', name:'Zephaniah', chapters:3},
+  {slug:'haggai', name:'Haggai', chapters:2},
+  {slug:'zechariah', name:'Zechariah', chapters:14},
+  {slug:'malachi', name:'Malachi', chapters:4},
+  {slug:'matthew', name:'Matthew', chapters:28},
+  {slug:'mark', name:'Mark', chapters:16},
+  {slug:'luke', name:'Luke', chapters:24},
+  {slug:'john', name:'John', chapters:21},
+  {slug:'acts', name:'Acts', chapters:28},
+  {slug:'romans', name:'Romans', chapters:16},
+  {slug:'1-corinthians', name:'1 Corinthians', chapters:16},
+  {slug:'2-corinthians', name:'2 Corinthians', chapters:13},
+  {slug:'galatians', name:'Galatians', chapters:6},
+  {slug:'ephesians', name:'Ephesians', chapters:6},
+  {slug:'philippians', name:'Philippians', chapters:4},
+  {slug:'colossians', name:'Colossians', chapters:4},
+  {slug:'1-thessalonians', name:'1 Thessalonians', chapters:5},
+  {slug:'2-thessalonians', name:'2 Thessalonians', chapters:3},
+  {slug:'1-timothy', name:'1 Timothy', chapters:6},
+  {slug:'2-timothy', name:'2 Timothy', chapters:4},
+  {slug:'titus', name:'Titus', chapters:3},
+  {slug:'philemon', name:'Philemon', chapters:1},
+  {slug:'hebrews', name:'Hebrews', chapters:13},
+  {slug:'james', name:'James', chapters:5},
+  {slug:'1-peter', name:'1 Peter', chapters:5},
+  {slug:'2-peter', name:'2 Peter', chapters:3},
+  {slug:'1-john', name:'1 John', chapters:5},
+  {slug:'2-john', name:'2 John', chapters:1},
+  {slug:'3-john', name:'3 John', chapters:1},
+  {slug:'jude', name:'Jude', chapters:1},
+  {slug:'revelation', name:'Revelation', chapters:22}
+];
 
-  const bookSelect = document.getElementById('bookSelect');
-  const chapterSelect = document.getElementById('chapterSelect');
-  const openBtn = document.getElementById('openBtn');
-  const randomBtn = document.getElementById('randomBtn');
-  const content = document.getElementById('content');
-  const readerHeader = document.getElementById('readerHeader');
-  const missingNotice = document.getElementById('missingNotice');
+/* ============
+   Helper: build grid
+   ============ */
+const grid = document.getElementById('booksGrid');
+BOOKS.forEach(book => {
+  const card = document.createElement('button');
+  card.className = 'book-card';
+  card.type = 'button';
+  card.innerHTML = `
+    <div class="book-icon">${book.name.split(' ').map(w=>w[0]).slice(0,2).join('')}</div>
+    <div class="book-name">${book.name}</div>
+    <div class="chap-count">${book.chapters} chapters</div>
+  `;
+  card.addEventListener('click', () => openBook(book));
+  grid.appendChild(card);
+});
 
-  // populate books
-  BOOKS.forEach(b=>{
-    const opt = document.createElement('option');
-    opt.value = b.slug;
-    opt.textContent = b.name;
-    bookSelect.appendChild(opt);
-  });
+/* ============
+   Viewer logic
+   - expects images at /books/<slug>/<n>.(jpg|png)
+   - lazy loads first chapter images, and builds thumbs for available chapters (tries jpg then png)
+   ============ */
+const modal = document.getElementById('modal');
+const modalBg = document.getElementById('modalBg');
+const viewerTitle = document.getElementById('viewerTitle');
+const viewerSubtitle = document.getElementById('viewerSubtitle');
+const pageImage = document.getElementById('pageImage');
+const thumbRow = document.getElementById('thumbRow');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const closeBtn = document.getElementById('closeBtn');
 
-  function populateChaptersFor(slug){
-    chapterSelect.innerHTML = '';
-    const book = BOOKS.find(b=>b.slug === slug);
-    if(!book) return;
-    for(let i=1;i<=book.chapters;i++){
-      const o = document.createElement('option');
-      o.value = i;
-      o.textContent = i;
-      chapterSelect.appendChild(o);
-    }
+let currentBook = null;
+let currentChapter = 1;
+
+function openBook(book){
+  currentBook = book;
+  currentChapter = 1;
+  viewerTitle.textContent = `${book.name}`;
+  viewerSubtitle.textContent = `Chapter ${currentChapter} / ${book.chapters}`;
+  buildThumbs(book);
+  showChapter(currentChapter);
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  // focus first for keyboard nav
+  closeBtn.focus();
+}
+
+modalBg.addEventListener('click', closeModal);
+closeBtn.addEventListener('click', closeModal);
+document.addEventListener('keydown', (e) => {
+  if(modal.classList.contains('open')){
+    if(e.key === 'Escape') closeModal();
+    if(e.key === 'ArrowRight') nextChapter();
+    if(e.key === 'ArrowLeft') prevChapter();
   }
+});
 
-  // init
-  populateChaptersFor(BOOKS[0].slug);
-  bookSelect.addEventListener('change', e => populateChaptersFor(e.target.value));
+function closeModal(){
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  pageImage.src = '';
+  thumbRow.innerHTML = '';
+  currentBook = null;
+}
 
-  // helper: fetch local file. NOTE: for local files served from same origin.
-  async function loadChapter(bookSlug, chapterNum){
-    // try chapter-per-file first: books/<slug>/<chapter>.html
-    const chapterPath = `/books/${bookSlug}/${chapterNum}.html`;
-    const bookPath = `/books/${bookSlug}.html`;
-    missingNotice.style.display = 'none';
-    content.classList.add('muted');
-    content.textContent = 'Loading...';
-    readerHeader.textContent = `Loading ${bookSlug} ${chapterNum}...`;
-
-    try {
-      let res = await fetch(chapterPath);
-      if(res.ok){
-        const html = await res.text();
-        renderChapterHtml(html, bookSlug, chapterNum);
-        return;
+/* build thumbnails (generates img elements that will try jpg then png) */
+function buildThumbs(book){
+  thumbRow.innerHTML = '';
+  for(let i=1;i<=book.chapters;i++){
+    const t = document.createElement('div');
+    t.className = 'thumb';
+    const img = document.createElement('img');
+    img.alt = `${book.name} ${i}`;
+    img.loading = 'lazy';
+    // set small preview path; we'll try both jpg and png with fallback loader
+    const base = `/books/${book.slug}/${i}`;
+    img.dataset.base = base;
+    img.dataset.num = i;
+    img.src = `${base}.jpg`;
+    img.onerror = () => {
+      if(img.src.endsWith('.jpg')) img.src = `${base}.png`;
+      else {
+        // missing - show tiny placeholder SVG data URI
+        img.src = placeholderDataURI(book.name + ' ' + i, 72, 88);
       }
-      // fallback to book-per-file (book contains markup with anchors or chapters)
-      res = await fetch(bookPath);
-      if(res.ok){
-        const html = await res.text();
-        // attempt to extract <chapter id="X">...</chapter> from file (simple parse)
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        // try anchors: <div class="chapter" data-chapter="1"> ...
-        const byId = doc.querySelector(`[data-chapter="${chapterNum}"]`) || doc.getElementById('chapter-' + chapterNum);
-        if(byId){
-          renderChapterHtml(byId.innerHTML, bookSlug, chapterNum);
-          return;
-        } else {
-          // if the book file is plain text, show notice and entire book
-          renderChapterHtml(doc.body.innerHTML, bookSlug, chapterNum, true);
-          return;
-        }
-      }
-      // not found
-      showMissing(bookSlug, chapterNum);
-    } catch (err) {
-      console.error(err);
-      showMissing(bookSlug, chapterNum, err.message);
-    }
+    };
+    img.addEventListener('click', ()=>{ showChapter(i); scrollThumbIntoView(img) });
+    t.appendChild(img);
+    thumbRow.appendChild(t);
   }
+}
 
-  function renderChapterHtml(html, bookSlug, chapterNum, fallback=false){
-    readerHeader.textContent = `${displayBookName(bookSlug)} — Chapter ${chapterNum}`;
-    content.classList.remove('muted');
-    // sanitize minimal: show as-is (we assume local safe files)
-    content.innerHTML = html;
-    missingNotice.style.display = 'none';
+/* display full-size chapter image (try jpg then png if 404) */
+function showChapter(n){
+  if(!currentBook) return;
+  currentChapter = n;
+  viewerSubtitle.textContent = `Chapter ${currentChapter} / ${currentBook.chapters}`;
+  const base = `/books/${currentBook.slug}/${n}`;
+  // first try jpg then png then placeholder
+  pageImage.src = `${base}.jpg`;
+  pageImage.onerror = () => {
+    if(pageImage.src.endsWith('.jpg')) pageImage.src = `${base}.png`;
+    else pageImage.src = placeholderDataURI('No image', 800, 1000);
+  };
+}
+
+/* next / prev */
+function nextChapter(){ if(currentBook && currentChapter < currentBook.chapters) showChapter(currentChapter+1); }
+function prevChapter(){ if(currentBook && currentChapter > 1) showChapter(currentChapter-1); }
+prevBtn.addEventListener('click', prevChapter);
+nextBtn.addEventListener('click', nextChapter);
+
+/* scroll thumb into visible area */
+function scrollThumbIntoView(img){
+  try{ img.scrollIntoView({behavior:'smooth',inline:'center'}); }catch(e){}
+}
+
+/* placeholder generator (simple SVG data URI) */
+function placeholderDataURI(text,w=200,h=260){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'><rect width='100%' height='100%' fill='#eee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='14' fill='#999'>${escapeHtml(text)}</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* theme toggle (switch html.light class) */
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', () => {
+  const html = document.documentElement;
+  if(html.classList.contains('light')) {
+    html.classList.remove('light');
+    localStorage.setItem('pr-theme', 'dark');
+    themeBtn.textContent = '🌙';
+  } else {
+    html.classList.add('light');
+    localStorage.setItem('pr-theme', 'light');
+    themeBtn.textContent = '☀️';
   }
+});
+// initialize theme from localStorage
+(function initTheme(){
+  const saved = localStorage.getItem('pr-theme') || 'light';
+  if(saved === 'light') document.documentElement.classList.add('light'), themeBtn.textContent='☀️';
+  else document.documentElement.classList.remove('light'), themeBtn.textContent='🌙';
+})();
 
-  function showMissing(bookSlug, chapterNum, extra=''){
-    readerHeader.textContent = `${displayBookName(bookSlug)} — Chapter ${chapterNum}`;
-    content.classList.add('muted');
-    content.innerHTML = `Chapter file not found on the site.<br><br>
-      Expected locations (served from your site):
-      <ul>
-        <li><code>/books/${bookSlug}/${chapterNum}.html</code> (recommended)</li>
-        <li><code>/books/${bookSlug}.html</code> (book file containing chapters)</li>
-      </ul>
-      <div style="margin-top:8px">If you want, I can generate the full KJV files and pack them into a ZIP for you to upload. Reply "GENERATE KJV CHAPTERS" and tell me whether you want chapter-per-file or book-per-file.</div>
-    `;
-    missingNotice.style.display = 'block';
-    missingNotice.innerHTML = (extra ? `<strong>Error:</strong> ${extra}<br><br>` : '') + missingNotice.innerHTML;
-  }
+/* small helper: try to preload a chapter image (optional) */
+function preloadChapter(bookSlug, n){
+  const img = new Image();
+  img.src = `/books/${bookSlug}/${n}.jpg`;
+  img.onerror = function(){ img.src = `/books/${bookSlug}/${n}.png` };
+}
 
-  function displayBookName(slug){
-    const b = BOOKS.find(x=>x.slug === slug);
-    return b ? b.name : slug;
-  }
-
-  openBtn.addEventListener('click', ()=>{
-    const b = bookSelect.value;
-    const c = chapterSelect.value;
-    loadChapter(b, c);
-  });
-
-  randomBtn.addEventListener('click', async ()=>{
-    // choose random book and chapter, then try to load
-    const book = BOOKS[Math.floor(Math.random()*BOOKS.length)];
-    const chapter = Math.floor(Math.random()*book.chapters) + 1;
-    bookSelect.value = book.slug;
-    populateChaptersFor(book.slug);
-    chapterSelect.value = chapter;
-    await loadChapter(book.slug, chapter);
-  });
-
-  // small fallback sample chapter (if you don't have files yet, use this sample)
-  // This allows the UI to show something even if files are missing.
-  (function addSampleFallback(){
-    // If user clicks open and files missing, the notice will show and suggest generation.
-    // But keep a sample so the page isn't empty.
-    document.addEventListener('DOMContentLoaded', ()=>{
-      // show light helper sample only on first load
-      const shown = sessionStorage.getItem('pr-sample-shown');
-      if(!shown){
-        content.classList.remove('muted');
-        readerHeader.textContent = 'Sample — Genesis 1';
-        content.innerHTML = `
-          <p><span class="verse-num">1</span>In the beginning God created the heaven and the earth.</p>
-          <p><span class="verse-num">2</span>And the earth was without form, and void; and darkness was upon the face of the deep...</p>
-          <div class="muted" style="margin-top:10px">This is a short sample. Replace with full files in /books/ to show real chapters.</div>
-        `;
-        sessionStorage.setItem('pr-sample-shown','1');
-      }
-    });
-  })();
-
-  // theme handling
-  const themeBtn = document.getElementById('themeBtn');
-  function setTheme(t){
-    document.documentElement.classList.remove('light','dark');
-    document.documentElement.classList.add(t);
-    localStorage.setItem('pr-theme', t);
-    themeBtn.textContent = t === 'light' ? '☀️' : '🌙';
-  }
-  (function initTheme(){
-    const saved = localStorage.getItem('pr-theme') || 'light';
-    setTheme(saved);
-  })();
-  themeBtn.addEventListener('click', ()=> setTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
+/* accessibility: close modal when orientation / back click on phones (optional) */
+window.addEventListener('pagehide', ()=>{ if(modal.classList.contains('open')) closeModal(); });
 
 </script>
 </body>
