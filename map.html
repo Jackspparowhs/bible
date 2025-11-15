@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Flight Tracker Map — PirateRuler.com</title>
+<link rel="icon" href="https://pirateruler.com/static/pr-logo.png" type="image/png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  html,body,#map{height:100%;margin:0;padding:0}
+  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#071225; color:#e9f1ff}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(90deg,#061028,#071225);color:#fff;
+    box-shadow:0 8px 20px rgba(0,0,0,0.6);position:relative;z-index:1000;
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6bbf4a,#2fa64f);display:flex;align-items:center;justify-content:center;font-weight:900}
+  .controls{display:flex;gap:8px;align-items:center}
+  .search {
+    display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;
+  }
+  input[type="search"]{background:transparent;border:0;color:#fff;outline:0;padding:6px 8px;font-size:14px;width:220px}
+  button{cursor:pointer;border:0;padding:8px 10px;border-radius:8px;background:linear-gradient(90deg,#6bbf4a,#2fa64f);color:#fff;font-weight:800}
+  #map{position:absolute;top:62px;bottom:0;left:0;right:0}
+  .legend{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,0.4);color:#fff;padding:8px;border-radius:8px;z-index:1000}
+  .status {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 1000;
+    background: rgba(0,0,0,0.45);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  @media(max-width:560px){
+    input[type="search"]{width:120px}
+    .topbar{padding:8px}
+    #map{top:56px}
+  }
+  /* small aircraft label style inside popup */
+  .popup-title{font-weight:900;margin-bottom:6px}
+  .small-muted{font-size:13px;color:#ddd}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">PR</div>
+      <div>
+        <div style="font-weight:900">Flight tracker</div>
+        <div style="font-size:12px;color:#bcd1c0">Map • Click aircraft for details</div>
+      </div>
+    </div>
+
+    <div class="controls" role="search" aria-label="Map search">
+      <div class="search">
+        <input id="filterInput" type="search" placeholder="Filter by call sign or reg" aria-label="Filter">
+        <button id="filterBtn">Filter</button>
+      </div>
+      <a href="/" style="margin-left:10px;background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:#fff;font-weight:700">Home</a>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="legend">Leaflet | © OpenStreetMap contributors</div>
+  <div id="status" class="status" aria-live="polite">Initializing map…</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // --- Map init (Mediterranean view to match your screenshot) ---
+    const map = L.map('map', { zoomControl: true }).setView([39.0, 18.0], 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // layer to hold aircraft markers
+    const aircraftLayer = L.layerGroup().addTo(map);
+
+    // demo fallback aircraft (used if API blocked)
+    const demoAircraft = [
+      { id: 'demo-1', reg: 'G-ABCD', callsign: 'BAW123', lat: 51.5, lon: -0.12, alt: 35000, hdg: 90 },
+      { id: 'demo-2', reg: 'N12345', callsign: 'DAL456', lat: 41.9, lon: 12.5, alt: 28000, hdg: 45 },
+      { id: 'demo-3', reg: 'A6-XYZ', callsign: 'UAE789', lat: 30.4, lon: 31.2, alt: 32000, hdg: 270 }
+    ];
+
+    // state
+    let lastData = demoAircraft.slice();
+    const statusEl = document.getElementById('status');
+
+    // render function
+    function renderAircraft(list){
+      aircraftLayer.clearLayers();
+      if(!list || list.length === 0){
+        statusEl.textContent = 'No aircraft to display';
+        return;
+      }
+      list.forEach(a => {
+        // aircraft icon uses rotation to show heading
+        const icon = L.divIcon({
+          html: `<div style="transform:rotate(${a.hdg || 0}deg);font-size:18px;line-height:0">✈️</div>`,
+          className: ''
+        });
+        const m = L.marker([a.lat, a.lon], { icon }).addTo(aircraftLayer);
+        const popupHtml = `
+          <div class="popup-title">${escapeHtml(a.callsign || '—')} — ${escapeHtml(a.reg || a.icao24 || '')}</div>
+          <div class="small-muted">Alt: ${a.alt !== null && a.alt !== undefined ? Math.round(a.alt) + ' ft' : 'N/A'}<br>
+          Heading: ${a.hdg !== null && a.hdg !== undefined ? Math.round(a.hdg) + '°' : 'N/A'}<br>
+          Source: ${a.source || 'demo'}</div>
+        `;
+        m.bindPopup(popupHtml);
+      });
+      // fit to markers if more than 1
+      try {
+        const bounds = aircraftLayer.getBounds();
+        if(bounds.isValid()){
+          map.fitBounds(bounds.pad(0.4));
+        }
+      } catch(e){}
+      statusEl.textContent = `Showing ${list.length} aircraft`;
+    }
+
+    // small helper to escape HTML in popup
+    function escapeHtml(str){ return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+
+    // --- FILTER UI ---
+    const filterInput = document.getElementById('filterInput');
+    document.getElementById('filterBtn').addEventListener('click', applyFilter);
+    filterInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') applyFilter(); });
+
+    function applyFilter(){
+      const q = filterInput.value.trim().toLowerCase();
+      if(!q){ renderAircraft(lastData); return; }
+      const filtered = lastData.filter(a => ((a.reg||'') + ' ' + (a.callsign||'') + ' ' + (a.icao24||'')).toLowerCase().includes(q));
+      if(filtered.length){
+        renderAircraft(filtered);
+        map.setView([filtered[0].lat, filtered[0].lon], 7);
+      } else {
+        aircraftLayer.clearLayers();
+        statusEl.textContent = 'No results for "' + q + '"';
+      }
+    }
+
+    // --- PUBLIC API: OpenSky Network (public REST) ---
+    // Bounding box tuned to Mediterranean like your screenshot:
+    // lamin=30, lomin=-10, lamax=46, lomax=35
+    // Endpoint: https://opensky-network.org/api/states/all?lamin=30&lomin=-10&lamax=46&lomax=35
+    // NOTE: OpenSky may block client-side CORS. If that happens, page falls back to demoAircraft and status shows a hint.
+    async function fetchOpenSky(){
+      const url = 'https://opensky-network.org/api/states/all?lamin=30&lomin=-10&lamax=46&lomax=35';
+      try {
+        statusEl.textContent = 'Fetching live aircraft…';
+        const resp = await fetch(url, {cache: 'no-store'});
+        if(!resp.ok){
+          throw new Error('HTTP ' + resp.status);
+        }
+        const data = await resp.json();
+        // data.states is array of arrays (see OpenSky docs)
+        if(!data.states || !Array.isArray(data.states)){
+          throw new Error('Unexpected response format');
+        }
+        // convert to simpler objects and filter out null positions
+        const list = data.states.map(s => {
+          return {
+            icao24: s[0],
+            callsign: (s[1] || '').trim(),
+            origin_country: s[2],
+            time_position: s[3],
+            last_contact: s[4],
+            lon: s[5],
+            lat: s[6],
+            alt_baro: s[7],
+            on_ground: s[8],
+            velocity: s[9],
+            hdg: s[10],
+            vert_rate: s[11],
+            source: 'OpenSky'
+          };
+        }).filter(a => a.lat !== null && a.lon !== null).slice(0, 200); // limit results
+
+        // map to fields we expect in renderAircraft
+        const mapped = list.map(a => ({
+          id: a.icao24,
+          icao24: a.icao24,
+          reg: a.icao24, // OpenSky doesn't always provide reg; using icao24 as identifier
+          callsign: a.callsign || a.icao24,
+          lat: a.lat,
+          lon: a.lon,
+          alt: (a.alt_baro !== null && a.alt_baro !== undefined) ? Math.round(a.alt_baro * 3.28084) : null, // m -> ft
+          hdg: a.hdg || 0,
+          source: 'OpenSky'
+        }));
+
+        // update global and render
+        lastData = mapped;
+        renderAircraft(lastData);
+        return true;
+      } catch (err) {
+        console.warn('OpenSky fetch failed:', err);
+        // if CORS error or other problem, show fallback message once and render demo
+        statusEl.textContent = 'Live fetch failed — showing demo data. To enable live: proxy the OpenSky API (server-side) or allow CORS.';
+        lastData = demoAircraft.slice();
+        renderAircraft(lastData);
+        return false;
+      }
+    }
+
+    // initial load: try OpenSky; fallback to demo if it fails
+    (async function init(){
+      const ok = await fetchOpenSky();
+      if(!ok){
+        // still attempt again later (in case of temporary network issue)
+        console.log('Using demo data. OpenSky might be blocked by CORS from the browser.');
+      }
+    })();
+
+    // refresh every 15s (if OpenSky accessible)
+    setInterval(async () => {
+      await fetchOpenSky();
+    }, 15000);
+
+    // expose function to manually force refresh (for debugging)
+    window.reloadAircraft = fetchOpenSky;
+
+    // Safety note in console for you (server owner)
+    console.log('%cIf OpenSky CORS blocks fetch, run a tiny server proxy to https://opensky-network.org/api/states/all and point this client to that proxy endpoint.', 'color:#9ad66b');
+
+  </script>
+</body>
+</html>
