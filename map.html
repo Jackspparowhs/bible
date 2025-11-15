@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Global Flight Tracker — PirateRuler.com</title>
+<title>Flight Tracker Map — PirateRuler.com</title>
 <link rel="icon" href="https://pirateruler.com/static/pr-logo.png" type="image/png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -49,26 +49,20 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
-/*
-  GLOBAL FLIGHT LOADER - Whole world attempt
-  - This client tries to fetch OpenSky tiles across the whole globe, dedupe and render progressively.
-  - For reliability you SHOULD run a tiny server proxy (avoid CORS & rate limits). If you can't, the client will
-    attempt direct OpenSky fetches and, when blocked, try the AllOrigins CORS proxy as a fallback.
-  - Adjust TILE_ROWS/TILE_COLS and MAX_TOTAL_MARKERS for performance on your device.
+/* === CONFIG ===
+   PROXY_URL: set to your server proxy if you run one (recommended).
+   If left empty, client will attempt direct ADSBExchange -> OpenSky -> AllOrigins fallbacks.
 */
-
-/* ========== USER-CONFIG ========== */
-// If you run a proxy (recommended), set PROXY_URL to it (e.g. 'https://your-vps/opensky')
-const PROXY_URL = ''; // set to your proxy if available (recommended)
-const TILE_ROWS = 12;       // rows (e.g. 12)
-const TILE_COLS = 24;       // cols (e.g. 24) -> TILE_ROWS * TILE_COLS requests
-const TILE_FETCH_DELAY = 200; // ms between each tile request
-const BATCH_SIZE = 300;     // markers added per batch
-const MAX_TOTAL_MARKERS = 12000; // safety cap
+const PROXY_URL = ''; // e.g. 'https://your-vps.example/opensky' or proxy that forwards requests
+const TILE_ROWS = 8;         // tune for performance (rows x cols tiles)
+const TILE_COLS = 16;
+const TILE_FETCH_DELAY = 250;
+const BATCH_SIZE = 250;
+const MAX_TOTAL_MARKERS = 10000;
 const WORLD_BBOX = { lamin:-90, lomin:-180, lamax:90, lomax:180 };
-const POLL_INTERVAL_MS = 120000; // refresh every 2 minutes (be careful with rate limits)
+const POLL_INTERVAL_MS = 120000; // refresh interval
 
-/* ========== MAP SETUP ========== */
+/* === MAP & UI (unchanged visually) === */
 const map = L.map('map', { zoomControl: true }).setView([20, 0], 2);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
@@ -80,29 +74,28 @@ const filterInput = document.getElementById('filterInput');
 document.getElementById('filterBtn').addEventListener('click', applyFilter);
 filterInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') applyFilter(); });
 
-/* fallback demo so UI never empty */
+/* demo fallback */
 const demoAircraft = [
   { icao24:'demo1', reg:'G-ABCD', callsign:'BAW123', lat:51.5, lon:-0.12, alt:35000, hdg:90, source:'demo' },
   { icao24:'demo2', reg:'N12345', callsign:'DAL456', lat:41.9, lon:12.5, alt:28000, hdg:45, source:'demo' },
   { icao24:'demo3', reg:'A6-XYZ', callsign:'UAE789', lat:30.4, lon:31.2, alt:32000, hdg:270, source:'demo' }
 ];
 
-/* ========== STATE ========== */
-let aircraftByIcao = {}; // dedupe storage
-let renderQueue = [];    // queue for progressive rendering
+/* state */
+let aircraftByIcao = {};
+let renderQueue = [];
 let fetching = false;
 
-/* ========== HELPERS ========== */
-function escapeHtml(str){ return String(str||'').replace(/[&<>"']/g, ch=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-function aircraftIcon(hdg){ return L.divIcon({ html:`<div style="transform:rotate(${hdg||0}deg);font-size:18px;line-height:0">✈️</div>`, className: '' }); }
+/* helpers */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function aircraftIcon(hdg){ return L.divIcon({ html: `<div style="transform:rotate(${hdg||0}deg);font-size:18px;line-height:0">✈️</div>`, className: '' }); }
 
-/* enqueue items and trigger rendering */
+/* enqueue + progressive render */
 function enqueueAndRender(items){
   let added = 0;
   items.forEach(a=>{
     if(!a || !a.icao24) return;
     if(aircraftByIcao[a.icao24]){
-      // update existing
       aircraftByIcao[a.icao24] = { ...aircraftByIcao[a.icao24], ...a };
       return;
     }
@@ -113,7 +106,6 @@ function enqueueAndRender(items){
   if(added) processRenderQueue();
 }
 
-/* batch renderer to avoid freeze */
 let processing = false;
 function processRenderQueue(){
   if(processing) return;
@@ -135,14 +127,12 @@ function processRenderQueue(){
     } else {
       processing = false;
       statusEl.textContent = `Rendered ${Object.keys(aircraftByIcao).length} aircraft`;
-      if(Object.keys(aircraftByIcao).length > MAX_TOTAL_MARKERS){
-        statusEl.textContent += ' (cap reached)';
-      }
+      if(Object.keys(aircraftByIcao).length > MAX_TOTAL_MARKERS) statusEl.textContent += ' (cap reached)';
     }
   })();
 }
 
-/* rebuild clusters from current state (used for filter reset) */
+/* rebuild clusters (filter reset) */
 function rebuildClustersFromState(){
   clusterGroup.clearLayers();
   const all = Object.values(aircraftByIcao).slice(0, MAX_TOTAL_MARKERS);
@@ -156,7 +146,7 @@ function rebuildClustersFromState(){
   statusEl.textContent = `Showing ${all.length} aircraft`;
 }
 
-/* filter UI */
+/* filter */
 function applyFilter(){
   const q = filterInput.value.trim().toLowerCase();
   if(!q){ rebuildClustersFromState(); return; }
@@ -173,77 +163,135 @@ function applyFilter(){
   statusEl.textContent = `Filter: ${values.length} matches`;
 }
 
-/* build fetch URL: proxy preferred, else direct OpenSky */
-function buildFetchUrl(params){
-  const q = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-  if(PROXY_URL && PROXY_URL.length){
-    // expect PROXY_URL to accept same params (e.g. /opensky)
-    return `${PROXY_URL}?${q}`;
-  }
-  return `https://opensky-network.org/api/states/all?${q}`;
+/* ---------- API helpers ---------- */
+
+/* Compute center & radius (nautical miles) for a tile */
+function tileCenterAndRadius(tile){
+  const latC = (tile.lamin + tile.lamax) / 2;
+  const lonC = (tile.lomin + tile.lomax) / 2;
+  // approximate half-diagonal in km (1 deg lat ~=111 km, lon scaled by cos(lat))
+  const latSpan = Math.abs(tile.lamax - tile.lamin);
+  const lonSpan = Math.abs(tile.lomax - tile.lomin);
+  const latKm = latSpan * 111;
+  const lonKm = lonSpan * 111 * Math.cos(latC * Math.PI/180);
+  const halfDiagKm = Math.sqrt((latKm/2)**2 + (lonKm/2)**2);
+  const nm = Math.max(10, Math.round(halfDiagKm / 1.852)); // convert km to nautical miles; min 10nm
+  return { lat: latC, lon: lonC, nm };
 }
 
-/* parse OpenSky response */
+/* ADSBExchange endpoint (by center+radius)
+   Example: https://adsbexchange.com/api/aircraft/lat/51.5005/lon/-0.1145/dist/100/
+   NOTE: heavy use may require api-auth header or an enterprise plan.
+*/
+function buildADSBUrl(lat, lon, nm){
+  return `https://adsbexchange.com/api/aircraft/lat/${encodeURIComponent(lat)}/lon/${encodeURIComponent(lon)}/dist/${encodeURIComponent(nm)}/`;
+}
+
+/* OpenSky bounding box fallback url */
+function buildOpenSkyUrl(lamin, lomin, lamax, lomax){
+  return `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+}
+
+/* AllOrigins wrapper for CORS fallback */
+function allOriginsRaw(url){
+  return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+}
+
+/* Parse ADSBExchange JSON (their /api/aircraft returns an object with 'ac' array) */
+function parseADSBResponse(json){
+  // ADSBExchange 'ac' array items contain fields like 'lat','lon','flight' (callsign), 'hex' (icao24), 'altitude', 'track'
+  if(!json) return [];
+  const arr = json.ac || json.aircraft || [];
+  return arr.map(a => ({
+    icao24: a.hex || a.icao || (a.modeS ? a.modeS : null) || (a.modeSHex ? a.modeSHex : null) || (a.icao24 ? a.icao24 : null),
+    reg: a.reg || a.registration || a.r || '' ,
+    callsign: (a.flight || a.call || a.callsign || a.flightId || '') .toString().trim(),
+    lat: a.lat || a.latitude || a['lat'],
+    lon: a.lon || a.longitude || a['lon'],
+    alt: a.alt || a.altitude || a.geoalt || null,
+    hdg: a.track || a.heading || a.hdg || 0,
+    source: 'ADSBExchange'
+  })).filter(x => x.lat !== null && x.lon !== null);
+}
+
+/* Parse OpenSky */
 function parseOpenSkyStates(data){
   if(!data || !Array.isArray(data.states)) return [];
   return data.states.map(s=>({
     icao24: s[0],
     callsign: (s[1] || '').trim(),
-    origin_country: s[2],
-    time_position: s[3],
-    last_contact: s[4],
     lon: s[5],
     lat: s[6],
-    alt_baro: s[7],
-    on_ground: s[8],
-    velocity: s[9],
-    hdg: s[10],
-    vert_rate: s[11],
+    alt: (s[7] !== null && s[7] !== undefined) ? Math.round(s[7] * 3.28084) : null,
+    hdg: s[10] || 0,
     source: 'OpenSky'
-  })).filter(x => x.lat !== null && x.lon !== null).map(a=>({
-    icao24: a.icao24,
-    reg: a.icao24,
-    callsign: a.callsign || a.icao24,
-    lat: a.lat,
-    lon: a.lon,
-    alt: (a.alt_baro !== null && a.alt_baro !== undefined) ? Math.round(a.alt_baro * 3.28084) : null,
-    hdg: a.hdg || 0,
-    source: a.source
-  }));
+  })).filter(x => x.lat !== null && x.lon !== null);
 }
 
-/* try direct fetch, then AllOrigins as fallback (if direct blocked) */
-async function fetchWithFallback(lamin,lomin,lamax,lomax){
-  const direct = buildFetchUrl({ lamin, lomin, lamax, lomax });
-  // If PROXY_URL is used, direct already points to proxy and this will be the proxy call.
+/* Try ADSBExchange -> OpenSky -> AllOrigins for each tile */
+async function fetchTileData(tile){
+  const { lat, lon, nm } = tileCenterAndRadius(tile);
+  // 1) ADSBExchange direct (fast if allowed)
   try {
-    statusEl.textContent = `Fetching ${lamin.toFixed(2)},${lomin.toFixed(2)} → ${lamax.toFixed(2)},${lomax.toFixed(2)}`;
-    const r = await fetch(direct, { cache: 'no-store' });
-    if(r.ok){
-      const j = await r.json();
-      return parseOpenSkyStates(j);
+    let url = buildADSBUrl(lat, lon, nm);
+    if(PROXY_URL) url = `${PROXY_URL}?proxysrc=${encodeURIComponent(url)}`; // optional proxy pattern (see proxy notes)
+    statusEl.textContent = `ADSBExchange: ${lat.toFixed(2)},${lon.toFixed(2)} / ${nm}nm`;
+    const resp = await fetch(url, { cache:'no-store' , headers: PROXY_URL ? {} : {} });
+    if(resp.ok){
+      const json = await resp.json();
+      const parsed = parseADSBResponse(json);
+      if(parsed && parsed.length) return parsed;
+      // if ADSBExchange returned empty, we still try OpenSky below
     } else {
-      throw new Error('HTTP ' + r.status);
+      // if blocked (403/401), continue to fallback
+      console.warn('ADSBExchange status', resp.status);
     }
-  } catch (err) {
-    // try AllOrigins fallback (CORS proxy)
-    try {
-      const corsUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(direct);
-      const r2 = await fetch(corsUrl, { cache: 'no-store' });
-      if(r2.ok){
-        const j2 = await r2.json();
-        return parseOpenSkyStates(j2);
-      } else {
-        throw new Error('AllOrigins HTTP ' + r2.status);
-      }
-    } catch (err2) {
-      console.warn('Both direct and AllOrigins failed', err, err2);
-      return null; // indicate failure
-    }
+  } catch(err){
+    console.warn('ADSBExchange fetch failed:', err);
   }
+
+  // 2) OpenSky bbox fallback (tile bbox)
+  try {
+    const urlOpen = buildOpenSkyUrl(tile.lamin, tile.lomin, tile.lamax, tile.lomax);
+    let finalUrl = urlOpen;
+    if(PROXY_URL){
+      finalUrl = `${PROXY_URL}?proxysrc=${encodeURIComponent(urlOpen)}`;
+    }
+    statusEl.textContent = `OpenSky: ${tile.lamin.toFixed(1)},${tile.lomin.toFixed(1)} → ${tile.lamax.toFixed(1)},${tile.lomax.toFixed(1)}`;
+    const r2 = await fetch(finalUrl, { cache:'no-store' });
+    if(r2.ok){
+      const j2 = await r2.json();
+      const parsed2 = parseOpenSkyStates(j2);
+      if(parsed2 && parsed2.length) return parsed2;
+    } else {
+      console.warn('OpenSky status', r2.status);
+    }
+  } catch(err){
+    console.warn('OpenSky fetch failed:', err);
+  }
+
+  // 3) As last resort try CORS proxy (AllOrigins) wrapping OpenSky
+  try {
+    const urlOpen = buildOpenSkyUrl(tile.lamin, tile.lomin, tile.lamax, tile.lomax);
+    const corsUrl = allOriginsRaw(urlOpen);
+    statusEl.textContent = `CORS-proxy: ${tile.lamin.toFixed(1)},${tile.lomin.toFixed(1)}`;
+    const r3 = await fetch(corsUrl, { cache:'no-store' });
+    if(r3.ok){
+      const j3 = await r3.json();
+      const parsed3 = parseOpenSkyStates(j3);
+      if(parsed3 && parsed3.length) return parsed3;
+    } else {
+      console.warn('AllOrigins status', r3.status);
+    }
+  } catch(err){
+    console.warn('AllOrigins failed:', err);
+  }
+
+  // nothing worked
+  return null;
 }
 
-/* generate tiles across WORLD_BBOX */
+/* tile generation */
 function generateTiles(rows, cols, bbox){
   const tiles = [];
   const latStep = (bbox.lamax - bbox.lamin) / rows;
@@ -260,43 +308,54 @@ function generateTiles(rows, cols, bbox){
   return tiles;
 }
 
-/* sequential tile fetcher (progressive render) */
+/* main tile fetcher - sequential with delay */
 async function fetchAllTilesAndRender(){
   if(fetching) return;
   fetching = true;
-  statusEl.textContent = 'Preparing world tiles…';
+  statusEl.textContent = 'Preparing tiles…';
   const tiles = generateTiles(TILE_ROWS, TILE_COLS, WORLD_BBOX);
-  statusEl.textContent = `Fetching ${tiles.length} tiles (this may take a while)…`;
+  statusEl.textContent = `Fetching ${tiles.length} tiles… (this may take a while)`;
 
   for(let i=0;i<tiles.length;i++){
     if(Object.keys(aircraftByIcao).length >= MAX_TOTAL_MARKERS){
-      statusEl.textContent = `Reached marker cap (${MAX_TOTAL_MARKERS}). Stopping further fetches.`;
+      statusEl.textContent = `Reached cap (${MAX_TOTAL_MARKERS}). Stopping...`;
       break;
     }
-    const t = tiles[i];
-    statusEl.textContent = `Tile ${i+1}/${tiles.length} — ${t.lamin.toFixed(1)},${t.lomin.toFixed(1)} → ${t.lamax.toFixed(1)},${t.lomax.toFixed(1)}`;
-    const parsed = await fetchWithFallback(t.lamin, t.lomin, t.lamax, t.lomax);
+    const tile = tiles[i];
+    statusEl.textContent = `Fetching tile ${i+1}/${tiles.length}...`;
+    const parsed = await fetchTileData(tile);
     if(parsed === null){
-      // failure on first tile? fallback to demo and stop
+      // fallback: if first tile fails, show demo and stop to avoid long waits.
       if(i === 0){
-        statusEl.textContent = 'Live fetch blocked (CORS or network). Showing demo. For full live, run the proxy and set PROXY_URL.';
+        statusEl.textContent = 'Live fetch blocked. Showing demo. (Run proxy for real live data)';
         enqueueAndRender(demoAircraft);
         fetching = false;
         return;
       } else {
-        statusEl.textContent = `Tile ${i+1} failed — continuing with next tiles...`;
+        statusEl.textContent = `Tile ${i+1} failed — continuing`;
       }
     } else if(parsed.length){
-      enqueueAndRender(parsed);
+      // normalize parsed items into our format (some from ADSB already match)
+      const mapped = parsed.map(a => ({
+        icao24: (a.icao24 || a.hex || a.icao || '').toLowerCase(),
+        reg: a.reg || a.registration || a.reg || '',
+        callsign: (a.callsign || a.flight || '').toString().trim(),
+        lat: a.lat,
+        lon: a.lon,
+        alt: a.alt || null,
+        hdg: a.hdg || 0,
+        source: a.source || 'api'
+      }));
+      enqueueAndRender(mapped);
     }
-    await new Promise(res=>setTimeout(res, TILE_FETCH_DELAY));
+    await new Promise(res => setTimeout(res, TILE_FETCH_DELAY));
   }
 
   statusEl.textContent = `Tile load complete — ${Object.keys(aircraftByIcao).length} unique aircraft (may be partial)`;
   fetching = false;
 }
 
-/* exposed manual reload in console */
+/* expose manual reload */
 window.reloadAllAircraft = async function(){
   aircraftByIcao = {};
   renderQueue = [];
@@ -304,45 +363,51 @@ window.reloadAllAircraft = async function(){
   await fetchAllTilesAndRender();
 };
 
-/* start initial process */
+/* start */
 (async function init(){
-  enqueueAndRender(demoAircraft); // immediate visible content
-  statusEl.textContent = 'Starting world fetch (this can take a while)...';
+  enqueueAndRender(demoAircraft);
+  statusEl.textContent = 'Starting world fetch (ADSBExchange preferred)…';
   await fetchAllTilesAndRender();
-
-  // periodic refresh (be careful with rate limits)
   setInterval(async ()=>{
     aircraftByIcao = {}; renderQueue = []; clusterGroup.clearLayers();
     await fetchAllTilesAndRender();
   }, POLL_INTERVAL_MS);
 })();
 
-/* ===== PROXY (recommended) =====
-If direct fetch or AllOrigins is unreliable for you, run this tiny proxy on a VPS and set PROXY_URL to it:
+/* ====== Recommended tiny proxy (if you need reliable live data) ======
+Save as proxy.js on your VPS (node 16+). It forwards any proxysrc= URL.
+Run: node proxy.js  (use a proper process manager / HTTPS in production)
 
-// proxy.js (node 16+)
+------------------------------------------
 import express from 'express';
 import fetch from 'node-fetch';
 const app = express();
-let cache = { ts:0, body:null };
-app.get('/opensky', async (req, res) => {
-  const { lamin='-90', lomin='-180', lamax='90', lomax='180' } = req.query;
-  if(Date.now() - cache.ts < 12000 && cache.body){
-    res.set('Content-Type','application/json'); return res.send(cache.body);
+let cache = { ts:0, bodyMap: {} };
+
+// simple endpoint: /proxy?proxysrc={encodeURIComponent(originalUrl)}
+app.get('/proxy', async (req, res) => {
+  const src = req.query.proxysrc;
+  if(!src) return res.status(400).send('missing proxysrc');
+  // simple per-URL cache for 10s
+  if(cache.bodyMap[src] && (Date.now() - cache.bodyMap[src].ts < 10000)) {
+    res.set('Content-Type','application/json');
+    return res.send(cache.bodyMap[src].body);
   }
   try {
-    const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
-    const r = await fetch(url);
-    const text = await r.text();
-    cache = { ts: Date.now(), body: text };
-    res.set('Content-Type','application/json'); res.send(text);
-  } catch(err) {
-    console.error(err); res.status(502).send({ error: 'fetch failed' });
+    const r = await fetch(src);
+    const txt = await r.text();
+    cache.bodyMap[src] = { ts: Date.now(), body: txt };
+    res.set('Content-Type','application/json');
+    res.send(txt);
+  } catch(e){
+    console.error('proxy fetch failed', e);
+    res.status(502).send({ error: 'proxy fetch failed' });
   }
 });
 app.listen(3000, ()=>console.log('proxy listening 3000'));
+------------------------------------------
 
-Then set PROXY_URL = 'https://your-vps.example/opensky' in the config at top of this file.
+If you run the proxy, set `PROXY_URL = 'https://your-vps.example/proxy'` at top of this file.
 */
 
   </script>
