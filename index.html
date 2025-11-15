@@ -3,22 +3,20 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>The Bible — PirateRuler.com</title>
-<meta name="description" content="The Bible by PirateRuler — read scripture daily. Privacy-first, in-browser scripture reader with night mode and offline-friendly features." />
+<title>Flight Tracker — PirateRuler.com</title>
+<meta name="description" content="Flight Tracker by PirateRuler — track flights on a 2D map, click aircraft for details, live positions with OpenStreetMap & Leaflet. No accounts, no tracking." />
 <meta name="theme-color" content="#071225" />
 <link rel="icon" href="https://pirateruler.com/static/pr-logo.png" type="image/png">
 <link rel="apple-touch-icon" href="https://pirateruler.com/static/pr-logo.png">
 
 <style>
-  /* -------------------------
-     Design tokens (easy to tweak)
-     ------------------------- */
+  /* design tokens (kept from original, only minor adjustments) */
   :root{
     --space: 16px;
     --radius: 14px;
     --text-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Helvetica Neue";
-    --accent-a: #6b7dff; /* tweak this */
-    --accent-b: #7b4bff; /* tweak this */
+    --accent-a: #6bbf4a; /* green-ish for aviation */
+    --accent-b: #2fa64f;
     --accent-c: #ff5aa4;
     --bg: linear-gradient(180deg,#061028 0%, #071225 50%);
     --card-dark: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
@@ -30,13 +28,9 @@
     --shadow-lg: 0 20px 50px rgba(2,8,20,0.6);
     --shadow-soft: 0 10px 30px rgba(2,8,20,0.35);
     --max-width: 1100px;
-
-    /* offcanvas background default (dark) - solid-ish */
     --offcanvas-bg: #061028;
     --offcanvas-link-bg: rgba(255,255,255,0.02);
   }
-
-  /* Light theme */
   html.light {
     --bg: linear-gradient(180deg,#f7fbfe,#f3f7fb);
     --card-dark: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
@@ -46,13 +40,9 @@
     --text: #071225;
     --shadow-lg: 0 18px 50px rgba(3,12,30,0.06);
     --shadow-soft: 0 8px 24px rgba(3,12,30,0.06);
-
-    /* offcanvas in light: solid white */
     --offcanvas-bg: #ffffff;
     --offcanvas-link-bg: rgba(11,17,36,0.03);
   }
-
-  /* basic reset */
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
@@ -67,10 +57,7 @@
   }
   a{color:inherit;text-decoration:none}
   img{max-width:100%;height:auto;display:block}
-
   .wrap{max-width:var(--max-width);margin:0 auto;padding-bottom:60px}
-
-  /* header */
   header {
     display:flex;
     align-items:center;
@@ -90,8 +77,6 @@
   }
   .brand .title {font-weight:800; font-size:16px; margin-bottom:2px}
   .brand .sub {font-size:12px;color:var(--muted)}
-
-  /* header controls */
   .controls {display:flex;gap:10px;align-items:center}
   .theme-btn{
     display:inline-flex;align-items:center;justify-content:center;padding:10px;border-radius:999px;background:var(--card-dark);border:0;
@@ -102,14 +87,12 @@
     background:var(--card-dark); box-shadow:var(--shadow-soft); border:0; cursor:pointer; color:var(--text);
   }
   .hamb svg{width:20px;height:20px; fill:none; stroke:currentColor; stroke-width:2}
-
-  /* hero */
   .hero {
     border-radius:18px;
     padding:28px;
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
     box-shadow:var(--shadow-lg);
-    text-align:center;
+    text-align:left;
     position:relative;
     overflow:visible;
   }
@@ -119,34 +102,26 @@
   }
   .h1 {font-size:34px;font-weight:900; margin:6px 0 8px; line-height:1.03; letter-spacing:-0.02em}
   .lead {max-width:920px;margin:0 auto;color:var(--muted); font-size:15px}
-
-  .hero-cta {margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .hero-cta {margin-top:20px;display:flex;gap:12px;justify-content:flex-start;flex-wrap:wrap}
   .btn-primary {
     background:linear-gradient(90deg,var(--accent-a),var(--accent-b));
-    color:white;padding:14px 26px;border-radius:14px;font-weight:900;border:0;box-shadow:0 18px 40px rgba(107,93,255,0.18);
+    color:white;padding:14px 26px;border-radius:14px;font-weight:900;border:0;box-shadow:0 18px 40px rgba(46,190,80,0.14);
     display:inline-flex;align-items:center;gap:10px;font-size:16px
   }
   .btn-ghost {
     background:transparent;border:1px solid var(--muted-2); padding:12px 18px;border-radius:12px;color:var(--muted);font-weight:800;
   }
-
-  /* stats bar */
-  .stats {display:flex;gap:12px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  .stats {display:flex;gap:12px;justify-content:flex-start;margin-top:18px;flex-wrap:wrap}
   .stat {
     padding:12px 18px;border-radius:12px;background:var(--card-dark); box-shadow:var(--shadow-soft);
-    min-width:120px;text-align:center;
+    min-width:120px;text-align:left;
   }
   .stat .num{font-weight:900;font-size:16px}
   .stat .lbl{font-size:13px;color:var(--muted);margin-top:4px}
-
-  /* layout */
   .main-grid {display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:22px;align-items:start}
   @media(max-width:980px){ .main-grid{ grid-template-columns: 1fr } .hero .h1{font-size:28px} }
-
   .panel {background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:18px; box-shadow:var(--shadow-soft)}
   h2.section {margin:0 0 8px 0;font-size:20px;font-weight:900}
-
-  /* features cards (like QR site) */
   .features {display:grid;grid-template-columns:1fr;gap:12px}
   .feature {
     display:flex;gap:14px;align-items:center;padding:16px;border-radius:12px;background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
@@ -157,35 +132,23 @@
   }
   .feature h4{margin:0;font-weight:900}
   .feature p{margin:6px 0 0;color:var(--muted)}
-
-  /* use-cases grid (cards) */
   .usecases {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
   .uc{padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); box-shadow:var(--shadow-soft); text-align:center}
   .uc .uc-icon {width:56px;height:56px;border-radius:12px;margin:0 auto 10px;background:linear-gradient(135deg,var(--accent-b),var(--accent-a));display:flex;align-items:center;justify-content:center;color:white;font-weight:900}
-
-  /* testimonials */
   .testimonials {display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
   .tm {padding:16px;border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));}
   .tm p {margin:0;color:var(--muted)}
   .tm .who {margin-top:12px;font-weight:800}
-
-  /* FAQ */
   .faq {margin-top:16px}
   .q {padding:12px;border-radius:10px;background:var(--card-dark);margin-bottom:8px}
   .q h4{margin:0;font-size:15px}
   .q p{margin:6px 0 0;color:var(--muted);font-size:14px}
-
-  /* right column */
   .right-col {position:relative}
   .preview-card {border-radius:12px;padding:18px;background:linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02));box-shadow:var(--shadow-soft)}
   .mini-cta {display:block;margin-top:16px;padding:12px;border-radius:12px;background:linear-gradient(90deg,var(--accent-a),var(--accent-b));text-align:center;color:white;font-weight:900}
-
-  /* footer */
   footer {margin-top:28px;text-align:center}
   footer .visit {display:inline-block;padding:12px 20px;border-radius:999px;background:linear-gradient(90deg,var(--accent-c),var(--accent-a));color:white;font-weight:800;box-shadow:0 14px 40px rgba(139,60,140,0.14)}
   footer small{display:block;margin-top:10px;color:var(--muted);font-size:13px}
-
-  /* off-canvas sidebar - NOTE: background uses solid --offcanvas-bg to avoid transparency */
   .offcanvas {
     position:fixed;
     right:12px;
@@ -199,7 +162,6 @@
     transform:translateX(120%);
     transition:transform .28s ease;
     z-index:200;
-    /* ensure text color contrasts */
     color:var(--text);
     border: 1px solid rgba(0,0,0,0.06);
   }
@@ -215,8 +177,6 @@
     background:var(--offcanvas-link-bg);
     border: 0;
   }
-
-  /* small screens */
   @media(max-width:720px){
     .usecases {grid-template-columns:1fr}
     .main-grid{grid-template-columns:1fr}
@@ -226,7 +186,6 @@
   }
 </style>
 </head>
-<!-- keep <body> class blank so JS sets theme (preserves your previous behavior) -->
 <body class="">
   <div class="wrap">
     <!-- header -->
@@ -234,16 +193,13 @@
       <div class="brand">
         <div class="logo" aria-hidden="true">PR</div>
         <div>
-          <div class="title">The Bible</div>
+          <div class="title">Flight tracker</div>
           <div class="sub">by PirateRuler.com</div>
         </div>
       </div>
 
       <div class="controls" role="navigation" aria-label="Header controls">
-        <!-- theme: just icon -->
         <button id="toggleTheme" class="theme-btn" title="Toggle theme" aria-pressed="false">☀️</button>
-
-        <!-- hamburger: icon only -->
         <button id="openMenu" class="hamb" aria-controls="menu" aria-expanded="false" title="Open menu">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -252,20 +208,19 @@
 
     <!-- hero -->
     <section class="hero" aria-labelledby="hero-title">
-      <div class="kicker">Daily Scripture • Quiet Reading</div>
-      <h1 id="hero-title" class="h1">Read the Holy Bible — Private, Peaceful</h1>
-      <p class="lead">Explore scripture with a simple, distraction-free reader. Offline-friendly, privacy-first — perfect for daily devotion, study, and reflection.</p>
+      <div class="kicker">Track flights live • Map view • Aircraft details</div>
+      <h1 id="hero-title" class="h1">Track flights</h1>
+      <p class="lead">View flights on a 2D map, click an aircraft for more information, search by registration/callsign and follow live positions. Lightweight, no accounts — just a clean frontend.</p>
 
       <div class="hero-cta">
-        <!-- main CTA now opens the reading page; we'll implement that page next -->
-        <a class="btn-primary" href="/bible-read.html" aria-label="Open the Bible">Open the Bible — Free</a>
+        <a class="btn-primary" href="/map.html" aria-label="View map">View map</a>
         <button class="btn-ghost" onclick="document.getElementById('faq').scrollIntoView({behavior:'smooth'})">Read FAQ</button>
       </div>
 
       <div class="stats" aria-hidden="true">
-        <div class="stat"><div class="num">Daily</div><div class="lbl">Devotionals</div></div>
-        <div class="stat"><div class="num">All</div><div class="lbl">Major Translations</div></div>
-        <div class="stat"><div class="num">Private</div><div class="lbl">No tracking</div></div>
+        <div class="stat"><div class="num">Live</div><div class="lbl">ADS-B & public feeds</div></div>
+        <div class="stat"><div class="num">Search</div><div class="lbl">Registration & callsign</div></div>
+        <div class="stat"><div class="num">No backend</div><div class="lbl">Frontend-first demo</div></div>
       </div>
     </section>
 
@@ -274,91 +229,66 @@
       <!-- left -->
       <div>
         <section class="panel">
-          <h2 class="section">Sacred features</h2>
-          <p class="muted">A gentle, focused reader: offline-friendly, readable fonts, night mode, and private bookmarks saved in your browser only.</p>
+          <h2 class="section">How it works</h2>
+          <p class="muted">This frontend shows flight positions on a Leaflet map using public tile servers and any public aircraft-data APIs you plug in. The demo map page (click View map) starts with the map centered and search controls visible.</p>
 
-          <div class="features" aria-hidden="false" style="margin-top:12px">
+          <div class="features" style="margin-top:12px">
             <div class="feature">
-              <div class="ic">📖</div>
+              <div class="ic">🛰️</div>
               <div>
-                <h4>Clean reader</h4>
-                <p>Large text, comfortable line-length, and distraction-free layout for long readings.</p>
+                <h4>Map-first design</h4>
+                <p>Open the map immediately to explore nearby traffic and global routes.</p>
               </div>
             </div>
 
             <div class="feature">
-              <div class="ic">🔒</div>
+              <div class="ic">✈️</div>
               <div>
-                <h4>Privacy-first</h4>
-                <p>Bookmarks and highlights stay in your browser. No account required to read Scripture.</p>
+                <h4>Aircraft details</h4>
+                <p>Click markers to see registration, callsign, altitude and heading. (Demo uses static sample markers.)</p>
               </div>
             </div>
 
             <div class="feature">
-              <div class="ic">🕯️</div>
+              <div class="ic">🔎</div>
               <div>
-                <h4>Night & focus modes</h4>
-                <p>Switch to a dark, candlelit style for evening readings or set longer line spacing for study.</p>
+                <h4>Search & filter</h4>
+                <p>Quickly filter by registration, callsign or airline. UI-ready for API hooking.</p>
               </div>
             </div>
 
             <div class="feature">
-              <div class="ic">📜</div>
+              <div class="ic">⚖️</div>
               <div>
-                <h4>Multiple translations</h4>
-                <p>Choose translations and compare passages side-by-side (coming soon on the reader page).</p>
+                <h4>Privacy-friendly</h4>
+                <p>No accounts required. You can hook an aircraft-data API client-side if allowed — or proxy on your server later.</p>
               </div>
             </div>
           </div>
         </section>
 
         <section class="panel" style="margin-top:14px">
-          <h2 class="section">Readings & devotions</h2>
+          <h2 class="section">Use cases</h2>
           <div class="usecases">
             <div class="uc">
-              <div class="uc-icon">✝️</div>
-              <h4>Gospel highlights</h4>
-              <p class="muted">Short passages from the Gospels for reflection and sharing.</p>
+              <div class="uc-icon">🧭</div>
+              <h4>Travel tracking</h4>
+              <p class="muted">Follow flights for pickup planning or curiosity.</p>
             </div>
             <div class="uc">
-              <div class="uc-icon">🕊️</div>
-              <h4>Psalms & prayers</h4>
-              <p class="muted">Comforting psalms curated for morning and night.</p>
+              <div class="uc-icon">📡</div>
+              <h4>ADS-B demos</h4>
+              <p class="muted">Visualise aircraft you receive via your receiver or public feeds.</p>
             </div>
             <div class="uc">
-              <div class="uc-icon">📚</div>
-              <h4>Epistles</h4>
-              <p class="muted">Letters for teaching, correction, and encouragement.</p>
+              <div class="uc-icon">📈</div>
+              <h4>Ops dashboards</h4>
+              <p class="muted">Integrate positions into dashboards for small ops teams.</p>
             </div>
             <div class="uc">
-              <div class="uc-icon">🔎</div>
-              <h4>Study tools</h4>
-              <p class="muted">Verse lists, search, and quick references (reader page will include them).</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel" style="margin-top:14px">
-          <h2 class="section">Reading presets</h2>
-          <p class="muted">Start with a classic passage — select a preset or open the reader to choose a chapter.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-            <button class="btn-ghost" onclick="openPassage('John 3:16')">John 3:16</button>
-            <button class="btn-ghost" onclick="openPassage('Psalm 23')">Psalm 23</button>
-            <button class="btn-ghost" onclick="openPassage('Romans 8:28')">Romans 8:28</button>
-            <button class="btn-ghost" onclick="openPassage('Matthew 5:1-12')">Sermon on the Mount</button>
-          </div>
-        </section>
-
-        <section class="panel" id="testimonials" style="margin-top:14px">
-          <h2 class="section">Voices</h2>
-          <div class="testimonials">
-            <div class="tm">
-              <p>“A calm, private place to read quietly — the night mode is gentle on the eyes.”</p>
-              <div class="who">— Lydia, daily reader</div>
-            </div>
-            <div class="tm">
-              <p>“Simple, respectful, and fast. I like that my notes stay with me in the browser.”</p>
-              <div class="who">— Pastor R.</div>
+              <div class="uc-icon">🎮</div>
+              <h4>Flight sim companion</h4>
+              <p class="muted">Overlay real traffic while you fly in sim — local-only options available.</p>
             </div>
           </div>
         </section>
@@ -367,16 +297,16 @@
           <h2 class="section">FAQ</h2>
           <div class="faq">
             <div class="q">
-              <h4>Which translations are available?</h4>
-              <p>We provide several major translations. More translations and comparison views will be available in the reader.</p>
+              <h4>Do I need an API key?</h4>
+              <p>Not for the demo map. If you add a paid aircraft-data API, you will need the key — this UI is ready to accept that client-side or via a small proxy.</p>
             </div>
             <div class="q">
-              <h4>Is this free?</h4>
-              <p>Yes — the reader is free. Your reading data remains private in your browser unless you export it yourself.</p>
+              <h4>Is the map live?</h4>
+              <p>The map page loads immediately and can poll an API for live positions; demo markers are static so it works without any backend.</p>
             </div>
             <div class="q">
-              <h4>Can I save bookmarks?</h4>
-              <p>Bookmarks and highlights are stored locally in your browser and will remain until you clear site data.</p>
+              <h4>Can I search by registration?</h4>
+              <p>Yes — the search box in the map UI accepts registration or callsign and will zoom to results once hooked to data.</p>
             </div>
           </div>
         </section>
@@ -385,16 +315,16 @@
       <!-- right column -->
       <aside class="right-col" aria-label="Sidebar content">
         <div class="preview-card panel">
-          <h3 style="margin-top:0">Quick start</h3>
-          <p class="muted">Begin with a preset or open the full reader for chapter-by-chapter navigation.</p>
-          <a class="mini-cta" href="/bible-read.html?passage=Psalm%2023">Open Psalm 23 →</a>
+          <h3 style="margin-top:0">Quick actions</h3>
+          <p class="muted">Open the map and try the live demo or search a registration.</p>
+          <a class="mini-cta" href="/map.html" aria-label="Open map">Open Map →</a>
 
           <div style="margin-top:14px">
             <h4 style="margin:0 0 6px 0">Quick settings</h4>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Theme: <span id="miniTheme">Light</span></div>
-              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Privacy: Browser only</div>
-              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Reader font: Serif</div>
+              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Tiles: OSM</div>
+              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Data: demo</div>
+              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Export: KML / CSV</div>
             </div>
           </div>
         </div>
@@ -402,9 +332,9 @@
         <div style="height:12px"></div>
 
         <div class="panel">
-          <h3 style="margin:0 0 8px 0">Daily devotion</h3>
-          <p class="muted">Try a daily reading plan or pick a short passage for reflection.</p>
-          <a class="mini-cta" href="/bible-read.html?plan=daily">Open Daily Plan →</a>
+          <h3 style="margin:0 0 8px 0">Developer notes</h3>
+          <p class="muted">This UI is ready for client-side integration with public aircraft-data endpoints, or you can proxy requests for higher reliability. No storage needed for basic retrieval & display.</p>
+          <a class="mini-cta" href="/map.html">View demo map →</a>
         </div>
       </aside>
     </div>
@@ -412,15 +342,15 @@
     <!-- footer -->
     <footer>
       <a class="visit" href="https://pirateruler.com" target="_blank" rel="noopener noreferrer">Visit PirateRuler.com</a>
-      <small id="copyright" style="display:block;margin-top:12px;color:var(--muted)">© <span id="year"></span> PirateRuler — The Bible.</small>
+      <small id="copyright" style="display:block;margin-top:12px;color:var(--muted)">© <span id="year"></span> PirateRuler — Flight tracker.</small>
     </footer>
   </div>
 
-  <!-- offcanvas menu (unchanged) -->
+  <!-- offcanvas menu -->
   <div id="menu" class="offcanvas" role="dialog" aria-hidden="true" aria-label="Site menu">
     <h3>Menu</h3>
     <p class="muted" style="margin-top:0;margin-bottom:10px">Quick links & actions</p>
-    <a href="/typing-test.html">Start Test</a>
+    <a href="/map.html">View map</a>
     <a href="https://pirateruler.com/post/about.html" target="_blank">About</a>
     <a href="https://pirateruler.com/post/privacy.html" target="_blank">Privacy</a>
     <a href="https://pirateruler.com/post/contact.html" target="_blank">Contact</a>
@@ -433,49 +363,38 @@
   // year
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  // theme toggle: toggles between dark and light classes on <html> (not body)
-  const docEl = document.documentElement; // <html>
+  // theme toggle
+  const docEl = document.documentElement;
   const toggle = document.getElementById('toggleTheme');
   const miniTheme = document.getElementById('miniTheme');
-
-  // INIT: prefer localStorage if set, otherwise default to LIGHT as requested
   const saved = localStorage.getItem('pr-theme') || 'light';
   if (saved === 'light') {
-    docEl.classList.remove('dark');
-    docEl.classList.add('light');
+    docEl.classList.remove('dark'); docEl.classList.add('light');
   } else {
-    docEl.classList.remove('light');
-    docEl.classList.add('dark');
+    docEl.classList.remove('light'); docEl.classList.add('dark');
   }
   updateThemeIcon();
-
-  // Toggle handler - toggles class on <html> so CSS theme vars apply
   toggle.addEventListener('click', () => {
     if(docEl.classList.contains('light')){
-      docEl.classList.remove('light');
-      docEl.classList.add('dark');
-      localStorage.setItem('pr-theme','dark');
+      docEl.classList.remove('light'); docEl.classList.add('dark'); localStorage.setItem('pr-theme','dark');
     } else {
-      docEl.classList.remove('dark');
-      docEl.classList.add('light');
-      localStorage.setItem('pr-theme','light');
+      docEl.classList.remove('dark'); docEl.classList.add('light'); localStorage.setItem('pr-theme','light');
     }
     updateThemeIcon();
   });
-
   function updateThemeIcon(){
     if(docEl.classList.contains('light')){
       toggle.textContent = '☀️';
-      miniTheme.textContent = 'Light';
+      miniTheme && (miniTheme.textContent = 'Light');
       toggle.setAttribute('aria-pressed','false');
     } else {
       toggle.textContent = '🌙';
-      miniTheme.textContent = 'Dark';
+      miniTheme && (miniTheme.textContent = 'Dark');
       toggle.setAttribute('aria-pressed','true');
     }
   }
 
-  // offcanvas menu (unchanged)
+  // offcanvas menu
   const menu = document.getElementById('menu');
   const openMenuBtn = document.getElementById('openMenu');
   const closeMenu = document.getElementById('closeMenu');
@@ -485,13 +404,6 @@
   closeMenu.addEventListener('click', () => {
     menu.classList.remove('open'); menu.setAttribute('aria-hidden','true'); openMenuBtn.setAttribute('aria-expanded','false');
   });
-
-  // preset passage quick-open (simple redirect to the reader page with query)
-  function openPassage(ref){
-    const url = new URL(window.location.href);
-    const target = url.origin + '/bible-read.html?passage=' + encodeURIComponent(ref);
-    window.location.href = target;
-  }
 </script>
 </body>
 </html>
