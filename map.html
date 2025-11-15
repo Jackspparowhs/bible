@@ -11,63 +11,25 @@
 <style>
   html,body,#map{height:100%;margin:0;padding:0}
   body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#071225; color:#e9f1ff}
-  /* top header bar (minimal: small logo + controls) */
-  .topbar{
-    display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
-    background:linear-gradient(90deg, rgba(6,16,40,0.9), rgba(7,18,37,0.9));
-    color:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.45); position:relative; z-index:1000;
-    gap:12px;
-  }
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(90deg, rgba(6,16,40,0.9), rgba(7,18,37,0.9));color:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.45);position:relative;z-index:1000;gap:12px;}
   .brand{display:flex;align-items:center;gap:10px}
-  .logo{
-    width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6bbf4a,#2fa64f);
-    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#06221a;
-    box-shadow:0 6px 18px rgba(0,0,0,0.35);
-  }
+  .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6bbf4a,#2fa64f);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#06221a;box-shadow:0 6px 18px rgba(0,0,0,0.35);}
   .controls{display:flex;gap:8px;align-items:center}
-  .search {
-    display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;
-  }
+  .search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;}
   input[type="search"]{background:transparent;border:0;color:#fff;outline:0;padding:6px 8px;font-size:14px;width:220px}
-  .btn {
-    cursor:pointer;border:0;padding:8px 10px;border-radius:8px;background:linear-gradient(90deg,#6bbf4a,#2fa64f);color:#fff;font-weight:800;
-    font-size:13px;
-  }
-  /* map container sits below topbar */
+  .btn{cursor:pointer;border:0;padding:8px 10px;border-radius:8px;background:linear-gradient(90deg,#6bbf4a,#2fa64f);color:#fff;font-weight:800;font-size:13px}
   #map{position:absolute;top:56px;bottom:0;left:0;right:0}
-  /* small unobtrusive status (bottom-right) */
-  .status {
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    z-index: 1000;
-    background: rgba(0,0,0,0.45);
-    color: #fff;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 13px;
-    pointer-events: none;
-    opacity: 0.95;
-  }
+  .status{position:absolute;right:12px;bottom:12px;z-index:1000;background:rgba(0,0,0,0.45);color:#fff;padding:6px 10px;border-radius:8px;font-size:13px;pointer-events:none;opacity:0.95}
   .legend{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,0.35);color:#fff;padding:6px 8px;border-radius:8px;z-index:1000;font-size:13px}
-  /* cluster style small adjustments */
-  .marker-cluster-small { background-color: rgba(75, 180, 80, 0.9); }
-  .marker-cluster-medium { background-color: rgba(50,160,60,0.95); }
-  .marker-cluster-large { background-color: rgba(30,120,45,0.95); }
-  @media(max-width:560px){
-    input[type="search"]{width:140px}
-    .topbar{padding:8px}
-    #map{top:52px}
-  }
+  @media(max-width:560px){ input[type="search"]{width:140px} .topbar{padding:8px} #map{top:52px} }
   .popup-title{font-weight:900;margin-bottom:6px}
   .small-muted{font-size:13px;color:#ddd}
 </style>
 </head>
 <body>
   <div class="topbar" role="navigation" aria-label="Map controls">
-    <div class="brand" aria-hidden="false">
+    <div class="brand">
       <div class="logo" title="PirateRuler">PR</div>
-      <!-- name removed intentionally (clean UI) -->
     </div>
 
     <div class="controls" role="search" aria-label="Map search">
@@ -87,164 +49,336 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
-    // --- Map init (centered over Mediterranean / Europe by default; user can pan/zoom) ---
-    const map = L.map('map', { zoomControl: true }).setView([39.0, 18.0], 5);
+/*
+  Full progressive loader for "all aircrafts" using OpenSky public endpoint.
+  IMPORTANT:
+  - OpenSky often blocks direct browser CORS requests. For reliable live data, run the tiny proxy (instructions below).
+  - If you set PROXY_URL to your proxy (e.g. https://your-vps.example/opensky), client will call that.
+  - This version splits a large area into tiles and fetches each tile sequentially, adds markers in batches,
+    and deduplicates by icao24 so you end up with many/all aircraft in the area without huge single responses.
+*/
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+/* CONFIG */
+const PROXY_URL = ''; // If you run a proxy, put its base URL here (e.g. 'https://myproxy.example/opensky')
+const DIRECT_OPENSKY = true; // try direct OpenSky if PROXY_URL is empty
+const TILE_ROWS = 6; // increase to cover more tiles (but more requests). 6x6 => 36 tiles
+const TILE_COLS = 6;
+const BBOX = { // whole area to cover (you can expand)
+  lamin: 20, // south
+  lomin: -20, // west
+  lamax: 54, // north
+  lomax: 40  // east
+};
+const TILE_FETCH_DELAY = 300; // ms delay between tile requests (so server isn't slammed)
+const BATCH_SIZE = 200; // how many markers to add in one batch when rendering
+const MAX_TOTAL_MARKERS = 6000; // safety cap for browser memory (you asked for "all" but limit to keep page usable)
 
-    // marker cluster group for performance & cleanliness
-    const clusterGroup = L.markerClusterGroup({
-      chunkedLoading: true,
-      maxClusterRadius: 60,
-      disableClusteringAtZoom: 13
-    }).addTo(map);
+/* --- map init --- */
+const map = L.map('map', { zoomControl: true }).setView([39.0, 18.0], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
-    // fallback demo aircraft (used when live fetch is blocked)
-    const demoAircraft = [
-      { id: 'demo-1', reg: 'G-ABCD', callsign: 'BAW123', lat: 51.5, lon: -0.12, alt: 35000, hdg: 90 },
-      { id: 'demo-2', reg: 'N12345', callsign: 'DAL456', lat: 41.9, lon: 12.5, alt: 28000, hdg: 45 },
-      { id: 'demo-3', reg: 'A6-XYZ', callsign: 'UAE789', lat: 30.4, lon: 31.2, alt: 32000, hdg: 270 },
-      { id: 'demo-4', reg: 'VP-CDE', callsign: 'BAW888', lat: 40.4, lon: 3.7, alt: 33000, hdg: 210 }
-    ];
+/* clustering */
+const clusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60, disableClusteringAtZoom: 13 });
+clusterGroup.addTo(map);
 
-    // state
-    let currentAircraft = demoAircraft.slice();
-    const statusEl = document.getElementById('status');
+const statusEl = document.getElementById('status');
+const filterInput = document.getElementById('filterInput');
+document.getElementById('filterBtn').addEventListener('click', applyFilter);
+filterInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') applyFilter(); });
 
-    // helper: add markers (clustered)
-    function plotAircraft(list){
-      clusterGroup.clearLayers();
-      if(!list || list.length === 0){
-        statusEl.textContent = 'No aircraft to display';
-        return;
-      }
-      const markers = list.map(a => {
-        const htmlIcon = L.divIcon({
-          html: `<div style="transform:rotate(${a.hdg || 0}deg);font-size:18px;line-height:0">✈️</div>`,
-          className: ''
-        });
-        const m = L.marker([a.lat, a.lon], { icon: htmlIcon });
+/* fallback demo (keeps UI working if live fails) */
+const demoAircraft = [
+  { id: 'demo-1', icao24: 'demo1', reg: 'G-ABCD', callsign: 'BAW123', lat: 51.5, lon: -0.12, alt: 35000, hdg: 90, source:'demo' },
+  { id: 'demo-2', icao24: 'demo2', reg: 'N12345', callsign: 'DAL456', lat: 41.9, lon: 12.5, alt: 28000, hdg: 45, source:'demo' },
+  { id: 'demo-3', icao24: 'demo3', reg: 'A6-XYZ', callsign: 'UAE789', lat: 30.4, lon: 31.2, alt: 32000, hdg: 270, source:'demo' }
+];
+
+/* state */
+let aircraftByIcao = {}; // dedupe by icao24
+let renderQueue = []; // markers waiting to be added
+let isFetching = false;
+
+/* helper to escape HTML in popup */
+function escapeHtml(str){ return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+
+/* icon generator */
+function aircraftIcon(hdg){
+  return L.divIcon({ html: `<div style="transform:rotate(${hdg||0}deg);font-size:18px;line-height:0">✈️</div>`, className: '' });
+}
+
+/* add marker batch-safe (non-blocking) */
+function enqueueAndRender(newItems){
+  // dedupe and push to renderQueue
+  let added = 0;
+  newItems.forEach(a => {
+    if(!a || !a.icao24) return;
+    if(aircraftByIcao[a.icao24]) {
+      // update position if newer
+      aircraftByIcao[a.icao24] = { ...aircraftByIcao[a.icao24], ...a };
+      return;
+    }
+    aircraftByIcao[a.icao24] = a;
+    renderQueue.push(a);
+    added++;
+  });
+  // start processing queue if not already
+  if(added) processRenderQueue();
+}
+
+/* process render queue in batches to avoid freeze */
+let processing = false;
+function processRenderQueue(){
+  if(processing) return;
+  processing = true;
+  (function step(){
+    const chunk = renderQueue.splice(0, BATCH_SIZE);
+    if(chunk.length){
+      const markers = chunk.map(a => {
+        const m = L.marker([a.lat, a.lon], { icon: aircraftIcon(a.hdg || 0) });
         const popup = `
           <div class="popup-title">${escapeHtml(a.callsign || '—')} — ${escapeHtml(a.reg || a.icao24 || '')}</div>
-          <div class="small-muted">Alt: ${a.alt !== null && a.alt !== undefined ? Math.round(a.alt) + ' ft' : 'N/A'}<br>
-          Heading: ${a.hdg !== null && a.hdg !== undefined ? Math.round(a.hdg) + '°' : 'N/A'}<br>
-          Source: ${escapeHtml(a.source || 'demo')}</div>
-        `;
+          <div class="small-muted">Alt: ${a.alt !== null && a.alt !== undefined ? (Math.round(a.alt) + ' ft') : 'N/A'}<br>
+            Heading: ${a.hdg !== null && a.hdg !== undefined ? Math.round(a.hdg) + '°' : 'N/A'}<br>
+            Source: ${escapeHtml(a.source || 'unknown')}
+          </div>`;
         m.bindPopup(popup);
         return m;
       });
       clusterGroup.addLayers(markers);
-      statusEl.textContent = `Showing ${list.length} aircraft`;
-      // fit bounds lightly when first load and list has many markers
-      try {
-        const bounds = clusterGroup.getBounds();
-        if(bounds.isValid()) {
-          // only fit on initial loads if zoom level is low
-          if(map.getZoom() < 6) map.fitBounds(bounds.pad(0.35));
-        }
-      } catch(e){}
+      // small delay before next chunk to yield to UI
+      setTimeout(step, 60);
+    } else {
+      processing = false;
+      // update status
+      statusEl.textContent = `Rendered ${Object.keys(aircraftByIcao).length} aircraft`;
+      // enforce safety cap
+      if(Object.keys(aircraftByIcao).length > MAX_TOTAL_MARKERS){
+        statusEl.textContent += ' (cap reached)';
+      }
     }
+  })();
+}
 
-    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+/* Fetch helpers */
 
-    // filter UI
-    const input = document.getElementById('filterInput');
-    document.getElementById('filterBtn').addEventListener('click', applyFilter);
-    input.addEventListener('keydown', e => { if(e.key === 'Enter') applyFilter(); });
+/* Build URL: either proxy-based or direct OpenSky
+   If using proxy, PROXY_URL should accept same query params (lamin,lomin,lamax,lomax)
+*/
+function buildFetchUrl(params){
+  const q = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  if(PROXY_URL && PROXY_URL.length){
+    // PROXY_URL expected to be full path like https://yourproxy.example/opensky
+    return `${PROXY_URL}?${q}`;
+  } else {
+    // direct OpenSky
+    const base = 'https://opensky-network.org/api/states/all';
+    return `${base}?${q}`;
+  }
+}
 
-    function applyFilter(){
-      const q = input.value.trim().toLowerCase();
-      if(!q){ plotAircraft(currentAircraft); return; }
-      const filtered = currentAircraft.filter(a => ((a.reg||'') + ' ' + (a.callsign||'') + ' ' + (a.icao24||'')).toLowerCase().includes(q));
-      if(filtered.length){
-        plotAircraft(filtered);
-        map.setView([filtered[0].lat, filtered[0].lon], 7);
+/* Parse OpenSky response into array of simple objects */
+function parseOpenSkyStates(data){
+  if(!data || !Array.isArray(data.states)) return [];
+  return data.states.map(s => ({
+    icao24: s[0],
+    callsign: (s[1] || '').trim(),
+    origin_country: s[2],
+    time_position: s[3],
+    last_contact: s[4],
+    lon: s[5],
+    lat: s[6],
+    alt_baro: s[7],
+    on_ground: s[8],
+    velocity: s[9],
+    hdg: s[10],
+    vert_rate: s[11],
+    source: 'OpenSky'
+  })).filter(x => x.lat !== null && x.lon !== null).map(a => ({
+    icao24: a.icao24,
+    reg: a.icao24,
+    callsign: a.callsign || a.icao24,
+    lat: a.lat,
+    lon: a.lon,
+    alt: (a.alt_baro !== null && a.alt_baro !== undefined) ? Math.round(a.alt_baro * 3.28084) : null,
+    hdg: a.hdg || 0,
+    source: a.source
+  }));
+}
+
+/* Tile generation: splits BBOX into rows x cols */
+function generateTiles(rows, cols, bbox){
+  const tiles = [];
+  const latStep = (bbox.lamax - bbox.lamin) / rows;
+  const lonStep = (bbox.lomax - bbox.lomin) / cols;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const lamin = bbox.lamin + (r * latStep);
+      const lamax = bbox.lamin + ((r+1) * latStep);
+      const lomin = bbox.lomin + (c * lonStep);
+      const lomax = bbox.lomin + ((c+1) * lonStep);
+      tiles.push({ lamin, lomin, lamax, lomax });
+    }
+  }
+  return tiles;
+}
+
+/* progressive tile fetcher */
+async function fetchAllTilesAndRender(){
+  if(isFetching) return;
+  isFetching = true;
+  statusEl.textContent = 'Building tile list…';
+
+  // generate tiles
+  const tiles = generateTiles(TILE_ROWS, TILE_COLS, BBOX);
+  statusEl.textContent = `Fetching ${tiles.length} tiles… (this may take a while)`;
+
+  // Shuffle tiles a bit so map appears populated across region quickly
+  // (optional) You can process center tiles first if desired.
+  // For now we fetch sequentially but with small delay to be polite.
+  for(let i=0;i<tiles.length;i++){
+    const t = tiles[i];
+    if(Object.keys(aircraftByIcao).length >= MAX_TOTAL_MARKERS) {
+      statusEl.textContent = `Reached marker cap (${MAX_TOTAL_MARKERS}). Stopping further tile fetches.`;
+      break;
+    }
+    const url = buildFetchUrl({ lamin: t.lamin, lomin: t.lomin, lamax: t.lamax, lomax: t.lomax });
+    try {
+      statusEl.textContent = `Fetching tile ${i+1}/${tiles.length}…`;
+      const resp = await fetch(url, { cache: 'no-store' });
+      if(!resp.ok){
+        throw new Error('HTTP ' + resp.status);
+      }
+      const json = await resp.json();
+      const parsed = parseOpenSkyStates(json);
+      // dedupe by icao24 across tiles and queue for rendering
+      enqueueAndRender(parsed);
+    } catch(err){
+      console.warn('Tile fetch failed:', err);
+      // if direct OpenSky CORS fails for first tile, break and fallback to demo
+      if(i === 0){
+        statusEl.textContent = 'Live fetch blocked (CORS or network). Showing demo — run a server proxy for reliable live data.';
+        // fallback
+        enqueueAndRender(demoAircraft);
+        isFetching = false;
+        return;
       } else {
-        clusterGroup.clearLayers();
-        statusEl.textContent = `No results for "${q}"`;
+        // continue with next tiles but notify user
+        statusEl.textContent = `Tile ${i+1} failed — continuing…`;
       }
     }
+    // small delay between tile requests
+    await new Promise(res => setTimeout(res, TILE_FETCH_DELAY));
+  }
 
-    // --- Live API: OpenSky Network ---
-    // Expanded bounding box to include much of Europe / Mediterranean / N Africa / Eastern Atlantic
-    // lamin=20, lomin=-20, lamax=54, lomax=40  (bigger area)
-    // Endpoint: https://opensky-network.org/api/states/all?lamin=20&lomin=-20&lamax=54&lomax=40
-    // We'll fetch up to 800 aircraft and rely on clustering.
-    async function fetchOpenSky(){
-      const url = 'https://opensky-network.org/api/states/all?lamin=20&lomin=-20&lamax=54&lomax=40';
-      try {
-        statusEl.textContent = 'Fetching live aircraft…';
-        const resp = await fetch(url, { cache: 'no-store' });
-        if(!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-        if(!data.states || !Array.isArray(data.states)) throw new Error('Bad format');
-        // map OpenSky state vectors to objects
-        const mapped = data.states.map(s => ({
-          icao24: s[0],
-          callsign: (s[1] || '').trim(),
-          origin_country: s[2],
-          time_position: s[3],
-          last_contact: s[4],
-          lon: s[5],
-          lat: s[6],
-          alt_baro: s[7],
-          on_ground: s[8],
-          velocity: s[9],
-          hdg: s[10],
-          vert_rate: s[11],
-          source: 'OpenSky'
-        })).filter(a => a.lat !== null && a.lon !== null);
+  // final status update
+  statusEl.textContent = `Load complete — ${Object.keys(aircraftByIcao).length} unique aircraft queued`;
+  isFetching = false;
+}
 
-        // limit (avoid extreme payloads)
-        const limited = mapped.slice(0, 800);
-        // convert to render format (alt in meters -> ft)
-        const ready = limited.map(a => ({
-          id: a.icao24,
-          icao24: a.icao24,
-          reg: a.icao24,
-          callsign: a.callsign || a.icao24,
-          lat: a.lat,
-          lon: a.lon,
-          alt: (a.alt_baro !== null && a.alt_baro !== undefined) ? Math.round(a.alt_baro * 3.28084) : null,
-          hdg: a.hdg || 0,
-          source: 'OpenSky'
-        }));
+/* When user pans/zooms, we can optionally fetch for the visible bounds only.
+   But you asked to load all aircraft, so the initial full-tile fetch will attempt that.
+   If you want viewport-only behavior, you can call fetchTilesForBounds(map.getBounds());
+*/
 
-        currentAircraft = ready;
-        plotAircraft(currentAircraft);
-        return true;
-      } catch (err) {
-        console.warn('OpenSky fetch failed:', err);
-        // fallback to demo set
-        statusEl.textContent = 'Live fetch failed (CORS or network). Showing demo. Use a server proxy for live data.';
-        currentAircraft = demoAircraft.slice();
-        plotAircraft(currentAircraft);
-        return false;
-      }
-    }
+/* Filter function (client-side) */
+function applyFilter(){
+  const q = filterInput.value.trim().toLowerCase();
+  if(!q){
+    // show everything currently loaded
+    clusterGroup.clearLayers();
+    // re-add all current aircraft markers from aircraftByIcao
+    const all = Object.values(aircraftByIcao);
+    enqueueAndRender(all); // this ensures markers present (but may re-add duplicates - safe)
+    // In practice, just rebuild cluster from aircraftByIcao:
+    rebuildClustersFromState();
+    return;
+  }
+  const values = Object.values(aircraftByIcao).filter(a => ((a.reg||'') + ' ' + (a.callsign||'') + ' ' + (a.icao24||'')).toLowerCase().includes(q));
+  clusterGroup.clearLayers();
+  // create markers for the filtered set immediately
+  const markers = values.map(a => {
+    const m = L.marker([a.lat, a.lon], { icon: aircraftIcon(a.hdg || 0) });
+    m.bindPopup(`<div class="popup-title">${escapeHtml(a.callsign||'—')} — ${escapeHtml(a.reg||a.icao24||'')}</div>
+      <div class="small-muted">Alt: ${a.alt || 'N/A'} ft<br>Heading: ${a.hdg || 'N/A'}°<br>Source: ${escapeHtml(a.source||'unknown')}</div>`);
+    return m;
+  });
+  clusterGroup.addLayers(markers);
+  if(values.length) map.setView([values[0].lat, values[0].lon], 7);
+  statusEl.textContent = `Filter: ${values.length} matches`;
+}
 
-    // initial load
-    (async function init(){
-      plotAircraft(demoAircraft); // immediate visual
-      const ok = await fetchOpenSky();
-      if(!ok){
-        // try again but don't spam; user can click reloadAircraft() from console
-        // we still poll occasionally to catch temporary issues
-        setTimeout(fetchOpenSky, 10000);
-      }
-    })();
+/* rebuild clusters from aircraftByIcao (useful after large changes) */
+function rebuildClustersFromState(){
+  clusterGroup.clearLayers();
+  const all = Object.values(aircraftByIcao);
+  const markers = all.map(a => {
+    const m = L.marker([a.lat, a.lon], { icon: aircraftIcon(a.hdg || 0) });
+    m.bindPopup(`<div class="popup-title">${escapeHtml(a.callsign||'—')} — ${escapeHtml(a.reg||a.icao24||'')}</div>
+      <div class="small-muted">Alt: ${a.alt || 'N/A'} ft<br>Heading: ${a.hdg || 'N/A'}°<br>Source: ${escapeHtml(a.source||'unknown')}</div>`);
+    return m;
+  });
+  clusterGroup.addLayers(markers);
+  statusEl.textContent = `Showing ${all.length} aircraft`;
+}
 
-    // poll every 20s when OpenSky is accessible
-    let pollTimer = setInterval(fetchOpenSky, 20000);
+/* Manual reload via window for debugging */
+window.reloadAllAircraft = async function(){
+  aircraftByIcao = {};
+  renderQueue = [];
+  clusterGroup.clearLayers();
+  await fetchAllTilesAndRender();
+};
 
-    // expose manual reload (console/testing)
-    window.reloadAircraft = fetchOpenSky;
+/* start */
+(async function start(){
+  // initial immediate demo so UI isn't empty
+  enqueueAndRender(demoAircraft);
 
-    // console hint if CORS blocked
-    console.log('%cIf OpenSky CORS blocks requests, run a small server-side proxy that forwards /api/states/all to opensky-network.org and point this client there.', 'color:#9ad66b');
+  // Attempt full-tile load:
+  statusEl.textContent = 'Starting full-area load (this may take 20-60s depending on tiles and network)…';
+  await fetchAllTilesAndRender();
+
+  // If tile fetcher didn't yield many aircraft (maybe due to CORS), show demo and instruct
+  if(Object.keys(aircraftByIcao).length <= demoAircraft.length){
+    statusEl.textContent = 'Live data limited by CORS or network. For full live: deploy the small proxy on your server and set PROXY_URL.';
+  }
+
+  // keep polling full-tile every 45s to refresh positions (you can reduce/increase)
+  setInterval(async ()=>{
+    // refresh state but keep existing markers for continuity; we'll fetch and update
+    await fetchAllTilesAndRender();
+  }, 45000);
+})();
+
+/* UTILS: If you want to run a tiny proxy (recommended):
+   Node proxy example (paste into proxy.js and run on your VPS with `node proxy.js`):
+   -------------------------------------------------
+   // proxy.js (node >= 16)
+   import express from 'express';
+   import fetch from 'node-fetch';
+   const app = express();
+   let cache = { ts:0, body:null };
+   app.get('/opensky', async (req, res) => {
+     const { lamin='20', lomin='-20', lamax='54', lomax='40' } = req.query;
+     if(Date.now() - cache.ts < 10000 && cache.body) {
+       res.set('Content-Type','application/json'); return res.send(cache.body);
+     }
+     try {
+       const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+       const r = await fetch(url);
+       const text = await r.text();
+       cache = { ts: Date.now(), body: text };
+       res.set('Content-Type','application/json'); res.send(text);
+     } catch(err) { console.error(err); res.status(502).send({error:'fetch failed'}); }
+   });
+   app.listen(3000, ()=>console.log('proxy listening 3000'));
+   -------------------------------------------------
+   Then set PROXY_URL to 'https://your-vps:3000/opensky' and reload the page.
+
+   Notes:
+   - The proxy avoids CORS blocks and lets the client fetch many tiles reliably.
+   - Use HTTPS for production and consider caching longer if you want fewer requests.
+*/
 
   </script>
 </body>
