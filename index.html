@@ -1,409 +1,71 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Flight Tracker — PirateRuler.com</title>
-<meta name="description" content="Flight Tracker by PirateRuler — track flights on a 2D map, click aircraft for details, live positions with OpenStreetMap & Leaflet. No accounts, no tracking." />
-<meta name="theme-color" content="#071225" />
-<link rel="icon" href="https://pirateruler.com/static/pr-logo.png" type="image/png">
-<link rel="apple-touch-icon" href="https://pirateruler.com/static/pr-logo.png">
-
-<style>
-  /* design tokens (kept from original, only minor adjustments) */
-  :root{
-    --space: 16px;
-    --radius: 14px;
-    --text-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Helvetica Neue";
-    --accent-a: #6bbf4a; /* green-ish for aviation */
-    --accent-b: #2fa64f;
-    --accent-c: #ff5aa4;
-    --bg: linear-gradient(180deg,#061028 0%, #071225 50%);
-    --card-dark: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    --glass: rgba(255,255,255,0.03);
-    --muted: #98a7bf;
-    --muted-2: rgba(233,241,255,0.14);
-    --text: #e9f1ff;
-    --radius-lg: 22px;
-    --shadow-lg: 0 20px 50px rgba(2,8,20,0.6);
-    --shadow-soft: 0 10px 30px rgba(2,8,20,0.35);
-    --max-width: 1100px;
-    --offcanvas-bg: #061028;
-    --offcanvas-link-bg: rgba(255,255,255,0.02);
-  }
-  html.light {
-    --bg: linear-gradient(180deg,#f7fbfe,#f3f7fb);
-    --card-dark: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
-    --glass: rgba(11,17,28,0.03);
-    --muted: #6b7480;
-    --muted-2: rgba(11,17,36,0.06);
-    --text: #071225;
-    --shadow-lg: 0 18px 50px rgba(3,12,30,0.06);
-    --shadow-soft: 0 8px 24px rgba(3,12,30,0.06);
-    --offcanvas-bg: #ffffff;
-    --offcanvas-link-bg: rgba(11,17,36,0.03);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    font-family:var(--text-sans);
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    color:var(--text);
-    background:var(--bg);
-    padding:var(--space);
-    line-height:1.45;
-  }
-  a{color:inherit;text-decoration:none}
-  img{max-width:100%;height:auto;display:block}
-  .wrap{max-width:var(--max-width);margin:0 auto;padding-bottom:60px}
-  header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    padding:12px;
-    border-radius:12px;
-    background:transparent;
-    margin-bottom:12px;
-  }
-  .brand {display:flex; gap:12px; align-items:center}
-  .logo {
-    width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); color:white; font-weight:900; font-size:18px;
-    box-shadow:var(--shadow-soft);
-    flex-shrink:0;
-  }
-  .brand .title {font-weight:800; font-size:16px; margin-bottom:2px}
-  .brand .sub {font-size:12px;color:var(--muted)}
-  .controls {display:flex;gap:10px;align-items:center}
-  .theme-btn{
-    display:inline-flex;align-items:center;justify-content:center;padding:10px;border-radius:999px;background:var(--card-dark);border:0;
-    width:48px;height:48px;box-shadow:var(--shadow-soft);cursor:pointer;color:var(--text);
-  }
-  .hamb {
-    width:48px;height:48px;border-radius:12px; display:flex; align-items:center; justify-content:center;
-    background:var(--card-dark); box-shadow:var(--shadow-soft); border:0; cursor:pointer; color:var(--text);
-  }
-  .hamb svg{width:20px;height:20px; fill:none; stroke:currentColor; stroke-width:2}
-  .hero {
-    border-radius:18px;
-    padding:28px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    box-shadow:var(--shadow-lg);
-    text-align:left;
-    position:relative;
-    overflow:visible;
-  }
-  .kicker {
-    display:inline-block;padding:6px 12px;border-radius:999px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    color:var(--muted); font-weight:700;font-size:13px;margin-bottom:12px;
-  }
-  .h1 {font-size:34px;font-weight:900; margin:6px 0 8px; line-height:1.03; letter-spacing:-0.02em}
-  .lead {max-width:920px;margin:0 auto;color:var(--muted); font-size:15px}
-  .hero-cta {margin-top:20px;display:flex;gap:12px;justify-content:flex-start;flex-wrap:wrap}
-  .btn-primary {
-    background:linear-gradient(90deg,var(--accent-a),var(--accent-b));
-    color:white;padding:14px 26px;border-radius:14px;font-weight:900;border:0;box-shadow:0 18px 40px rgba(46,190,80,0.14);
-    display:inline-flex;align-items:center;gap:10px;font-size:16px
-  }
-  .btn-ghost {
-    background:transparent;border:1px solid var(--muted-2); padding:12px 18px;border-radius:12px;color:var(--muted);font-weight:800;
-  }
-  .stats {display:flex;gap:12px;justify-content:flex-start;margin-top:18px;flex-wrap:wrap}
-  .stat {
-    padding:12px 18px;border-radius:12px;background:var(--card-dark); box-shadow:var(--shadow-soft);
-    min-width:120px;text-align:left;
-  }
-  .stat .num{font-weight:900;font-size:16px}
-  .stat .lbl{font-size:13px;color:var(--muted);margin-top:4px}
-  .main-grid {display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:22px;align-items:start}
-  @media(max-width:980px){ .main-grid{ grid-template-columns: 1fr } .hero .h1{font-size:28px} }
-  .panel {background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:18px; box-shadow:var(--shadow-soft)}
-  h2.section {margin:0 0 8px 0;font-size:20px;font-weight:900}
-  .features {display:grid;grid-template-columns:1fr;gap:12px}
-  .feature {
-    display:flex;gap:14px;align-items:center;padding:16px;border-radius:12px;background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
-    border:1px solid rgba(255,255,255,0.02);
-  }
-  .feature .ic {
-    width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent-a),var(--accent-b));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;
-  }
-  .feature h4{margin:0;font-weight:900}
-  .feature p{margin:6px 0 0;color:var(--muted)}
-  .usecases {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-  .uc{padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); box-shadow:var(--shadow-soft); text-align:center}
-  .uc .uc-icon {width:56px;height:56px;border-radius:12px;margin:0 auto 10px;background:linear-gradient(135deg,var(--accent-b),var(--accent-a));display:flex;align-items:center;justify-content:center;color:white;font-weight:900}
-  .testimonials {display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
-  .tm {padding:16px;border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));}
-  .tm p {margin:0;color:var(--muted)}
-  .tm .who {margin-top:12px;font-weight:800}
-  .faq {margin-top:16px}
-  .q {padding:12px;border-radius:10px;background:var(--card-dark);margin-bottom:8px}
-  .q h4{margin:0;font-size:15px}
-  .q p{margin:6px 0 0;color:var(--muted);font-size:14px}
-  .right-col {position:relative}
-  .preview-card {border-radius:12px;padding:18px;background:linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02));box-shadow:var(--shadow-soft)}
-  .mini-cta {display:block;margin-top:16px;padding:12px;border-radius:12px;background:linear-gradient(90deg,var(--accent-a),var(--accent-b));text-align:center;color:white;font-weight:900}
-  footer {margin-top:28px;text-align:center}
-  footer .visit {display:inline-block;padding:12px 20px;border-radius:999px;background:linear-gradient(90deg,var(--accent-c),var(--accent-a));color:white;font-weight:800;box-shadow:0 14px 40px rgba(139,60,140,0.14)}
-  footer small{display:block;margin-top:10px;color:var(--muted);font-size:13px}
-  .offcanvas {
-    position:fixed;
-    right:12px;
-    top:12px;
-    width:340px;
-    max-width:92vw;
-    background:var(--offcanvas-bg);
-    border-radius:14px;
-    padding:14px;
-    box-shadow:var(--shadow-lg);
-    transform:translateX(120%);
-    transition:transform .28s ease;
-    z-index:200;
-    color:var(--text);
-    border: 1px solid rgba(0,0,0,0.06);
-  }
-  .offcanvas.open{transform:translateX(0)}
-  .offcanvas h3{margin:0 0 8px 0}
-  .offcanvas a{
-    display:block;
-    padding:10px;
-    border-radius:10px;
-    color:var(--text);
-    font-weight:800;
-    margin-bottom:6px;
-    background:var(--offcanvas-link-bg);
-    border: 0;
-  }
-  @media(max-width:720px){
-    .usecases {grid-template-columns:1fr}
-    .main-grid{grid-template-columns:1fr}
-    .hero {padding:20px}
-    .h1{font-size:26px}
-    .offcanvas { right:8px; top:8px; width:92vw; max-width:none; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="Maps by PirateRuler - An interactive map powered by Leaflet and OpenStreetMap">
+    <title>Maps by PirateRuler.com</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="">
-  <div class="wrap">
-    <!-- header -->
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">PR</div>
-        <div>
-          <div class="title">Flight tracker</div>
-          <div class="sub">by PirateRuler.com</div>
-        </div>
-      </div>
-
-      <div class="controls" role="navigation" aria-label="Header controls">
-        <button id="toggleTheme" class="theme-btn" title="Toggle theme" aria-pressed="false">☀️</button>
-        <button id="openMenu" class="hamb" aria-controls="menu" aria-expanded="false" title="Open menu">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <!-- hero -->
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="kicker">Track flights live • Map view • Aircraft details</div>
-      <h1 id="hero-title" class="h1">Track flights</h1>
-      <p class="lead">View flights on a 2D map, click an aircraft for more information, search by registration/callsign and follow live positions. Lightweight, no accounts — just a clean frontend.</p>
-
-      <div class="hero-cta">
-        <a class="btn-primary" href="/map.html" aria-label="View map">View map</a>
-        <button class="btn-ghost" onclick="document.getElementById('faq').scrollIntoView({behavior:'smooth'})">Read FAQ</button>
-      </div>
-
-      <div class="stats" aria-hidden="true">
-        <div class="stat"><div class="num">Live</div><div class="lbl">ADS-B & public feeds</div></div>
-        <div class="stat"><div class="num">Search</div><div class="lbl">Registration & callsign</div></div>
-        <div class="stat"><div class="num">No backend</div><div class="lbl">Frontend-first demo</div></div>
-      </div>
-    </section>
-
-    <!-- main content -->
-    <div class="main-grid">
-      <!-- left -->
-      <div>
-        <section class="panel">
-          <h2 class="section">How it works</h2>
-          <p class="muted">This frontend shows flight positions on a Leaflet map using public tile servers and any public aircraft-data APIs you plug in. The demo map page (click View map) starts with the map centered and search controls visible.</p>
-
-          <div class="features" style="margin-top:12px">
-            <div class="feature">
-              <div class="ic">🛰️</div>
-              <div>
-                <h4>Map-first design</h4>
-                <p>Open the map immediately to explore nearby traffic and global routes.</p>
-              </div>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>Maps</h1>
+                    <p class="subtitle">by PirateRuler.com</p>
+                </div>
+                
+                <div class="search-container">
+                    <div class="search-box">
+                        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            class="search-input" 
+                            placeholder="Search locations..."
+                            autocomplete="off">
+                        <div id="searchResults" class="search-results"></div>
+                    </div>
+                </div>
+                
+                <button id="myLocationBtn" class="location-btn" title="Go to my location">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                </button>
             </div>
-
-            <div class="feature">
-              <div class="ic">✈️</div>
-              <div>
-                <h4>Aircraft details</h4>
-                <p>Click markers to see registration, callsign, altitude and heading. (Demo uses static sample markers.)</p>
-              </div>
-            </div>
-
-            <div class="feature">
-              <div class="ic">🔎</div>
-              <div>
-                <h4>Search & filter</h4>
-                <p>Quickly filter by registration, callsign or airline. UI-ready for API hooking.</p>
-              </div>
-            </div>
-
-            <div class="feature">
-              <div class="ic">⚖️</div>
-              <div>
-                <h4>Privacy-friendly</h4>
-                <p>No accounts required. You can hook an aircraft-data API client-side if allowed — or proxy on your server later.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel" style="margin-top:14px">
-          <h2 class="section">Use cases</h2>
-          <div class="usecases">
-            <div class="uc">
-              <div class="uc-icon">🧭</div>
-              <h4>Travel tracking</h4>
-              <p class="muted">Follow flights for pickup planning or curiosity.</p>
-            </div>
-            <div class="uc">
-              <div class="uc-icon">📡</div>
-              <h4>ADS-B demos</h4>
-              <p class="muted">Visualise aircraft you receive via your receiver or public feeds.</p>
-            </div>
-            <div class="uc">
-              <div class="uc-icon">📈</div>
-              <h4>Ops dashboards</h4>
-              <p class="muted">Integrate positions into dashboards for small ops teams.</p>
-            </div>
-            <div class="uc">
-              <div class="uc-icon">🎮</div>
-              <h4>Flight sim companion</h4>
-              <p class="muted">Overlay real traffic while you fly in sim — local-only options available.</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel" id="faq" style="margin-top:14px">
-          <h2 class="section">FAQ</h2>
-          <div class="faq">
-            <div class="q">
-              <h4>Do I need an API key?</h4>
-              <p>Not for the demo map. If you add a paid aircraft-data API, you will need the key — this UI is ready to accept that client-side or via a small proxy.</p>
-            </div>
-            <div class="q">
-              <h4>Is the map live?</h4>
-              <p>The map page loads immediately and can poll an API for live positions; demo markers are static so it works without any backend.</p>
-            </div>
-            <div class="q">
-              <h4>Can I search by registration?</h4>
-              <p>Yes — the search box in the map UI accepts registration or callsign and will zoom to results once hooked to data.</p>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- right column -->
-      <aside class="right-col" aria-label="Sidebar content">
-        <div class="preview-card panel">
-          <h3 style="margin-top:0">Quick actions</h3>
-          <p class="muted">Open the map and try the live demo or search a registration.</p>
-          <a class="mini-cta" href="/map.html" aria-label="Open map">Open Map →</a>
-
-          <div style="margin-top:14px">
-            <h4 style="margin:0 0 6px 0">Quick settings</h4>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Tiles: OSM</div>
-              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Data: demo</div>
-              <div style="background:var(--card-dark);padding:10px;border-radius:10px;font-weight:800">Export: KML / CSV</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="height:12px"></div>
-
-        <div class="panel">
-          <h3 style="margin:0 0 8px 0">Developer notes</h3>
-          <p class="muted">This UI is ready for client-side integration with public aircraft-data endpoints, or you can proxy requests for higher reliability. No storage needed for basic retrieval & display.</p>
-          <a class="mini-cta" href="/map.html">View demo map →</a>
-        </div>
-      </aside>
+        </header>
+        
+        <!-- Map Container -->
+        <div id="map" class="map"></div>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <a href="https://pirateruler.com/post/about.html" target="_blank" rel="noopener">About — PirateRuler</a>
+            <span class="divider">•</span>
+            <a href="https://pirateruler.com/post/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+            <span class="divider">•</span>
+            <a href="https://pirateruler.com/post/contact.html" target="_blank" rel="noopener">Contact</a>
+            <span class="divider">•</span>
+            <a href="https://pirateruler.com/post/terms.html" target="_blank" rel="noopener">Terms & Service</a>
+        </footer>
     </div>
-
-    <!-- footer -->
-    <footer>
-      <a class="visit" href="https://pirateruler.com" target="_blank" rel="noopener noreferrer">Visit PirateRuler.com</a>
-      <small id="copyright" style="display:block;margin-top:12px;color:var(--muted)">© <span id="year"></span> PirateRuler — Flight tracker.</small>
-    </footer>
-  </div>
-
-  <!-- offcanvas menu -->
-  <div id="menu" class="offcanvas" role="dialog" aria-hidden="true" aria-label="Site menu">
-    <h3>Menu</h3>
-    <p class="muted" style="margin-top:0;margin-bottom:10px">Quick links & actions</p>
-    <a href="/map.html">View map</a>
-    <a href="https://pirateruler.com/post/about.html" target="_blank">About</a>
-    <a href="https://pirateruler.com/post/privacy.html" target="_blank">Privacy</a>
-    <a href="https://pirateruler.com/post/contact.html" target="_blank">Contact</a>
-    <a href="https://pirateruler.com/post/terms.html" target="_blank">Terms</a>
-    <div style="height:12px"></div>
-    <button id="closeMenu" style="padding:10px;border-radius:10px;border:0;background:linear-gradient(90deg,#fff, #ddd);width:100%;font-weight:800">Close</button>
-  </div>
-
-<script>
-  // year
-  document.getElementById('year').textContent = new Date().getFullYear();
-
-  // theme toggle
-  const docEl = document.documentElement;
-  const toggle = document.getElementById('toggleTheme');
-  const miniTheme = document.getElementById('miniTheme');
-  const saved = localStorage.getItem('pr-theme') || 'light';
-  if (saved === 'light') {
-    docEl.classList.remove('dark'); docEl.classList.add('light');
-  } else {
-    docEl.classList.remove('light'); docEl.classList.add('dark');
-  }
-  updateThemeIcon();
-  toggle.addEventListener('click', () => {
-    if(docEl.classList.contains('light')){
-      docEl.classList.remove('light'); docEl.classList.add('dark'); localStorage.setItem('pr-theme','dark');
-    } else {
-      docEl.classList.remove('dark'); docEl.classList.add('light'); localStorage.setItem('pr-theme','light');
-    }
-    updateThemeIcon();
-  });
-  function updateThemeIcon(){
-    if(docEl.classList.contains('light')){
-      toggle.textContent = '☀️';
-      miniTheme && (miniTheme.textContent = 'Light');
-      toggle.setAttribute('aria-pressed','false');
-    } else {
-      toggle.textContent = '🌙';
-      miniTheme && (miniTheme.textContent = 'Dark');
-      toggle.setAttribute('aria-pressed','true');
-    }
-  }
-
-  // offcanvas menu
-  const menu = document.getElementById('menu');
-  const openMenuBtn = document.getElementById('openMenu');
-  const closeMenu = document.getElementById('closeMenu');
-  openMenuBtn.addEventListener('click', () => {
-    menu.classList.add('open'); menu.setAttribute('aria-hidden','false'); openMenuBtn.setAttribute('aria-expanded','true');
-  });
-  closeMenu.addEventListener('click', () => {
-    menu.classList.remove('open'); menu.setAttribute('aria-hidden','true'); openMenuBtn.setAttribute('aria-expanded','false');
-  });
-</script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <!-- Custom Script -->
+    <script src="script.js"></script>
 </body>
 </html>
