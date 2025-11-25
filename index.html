@@ -46,6 +46,7 @@
   .theme-toggle.active .theme-slider-thumb{transform:translateX(26px);}
   .btn{padding:10px 16px; border-radius:var(--radius-md); border:1px solid var(--border); cursor:pointer; font-weight:600; background:var(--bg); color:var(--text); transition:var(--transition); box-shadow:var(--shadow-sm); text-decoration:none;}
   .btn:hover{background:var(--accent); color:var(--bg); transform:translateY(-2px); box-shadow:var(--shadow-md);}
+  .btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
   .hamb{width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border);font-weight:bold;background:var(--bg);transition:var(--transition);box-shadow:var(--shadow-sm); text-decoration:none;}
   .hamb:hover{background:var(--accent);color:var(--bg);transform:translateY(-2deg) rotate(90deg);box-shadow:var(--shadow-md);}
   .hero{padding:48px 24px;border-radius:var(--radius-xl);background:var(--card);box-shadow:var(--shadow-lg);margin-bottom:24px;}
@@ -143,9 +144,9 @@
   <header class="header" role="banner">
     <div class="brand">
       <a href="index.html" aria-label="Home" style="display:flex;align-items:center;gap:12px">
-        <div class="logo" aria-hidden="true">WS</div>
+        <div class="logo" aria-hidden="true">PR</div>
         <div class="brand-title">
-          <div class="title-strong">Wikipedia Search</div>
+          <div class="title-strong">Wikipedia</div>
           <div class="by">by PirateRuler.com</div>
         </div>
       </a>
